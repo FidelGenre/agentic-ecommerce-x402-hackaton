@@ -1,9 +1,9 @@
 import { createConfig, http } from 'wagmi'
-import { skaleCalypsoHub } from '@/config/chains'
+import { skaleBaseTestnet } from '@/config/chains'
 
 export const config = createConfig({
-    chains: [skaleCalypsoHub],
+    chains: [skaleBaseTestnet],
     transports: {
-        [skaleCalypsoHub.id]: http(process.env.NEXT_PUBLIC_SKALE_RPC_URL || 'https://mainnet.skalenodes.com/v1/honorable-steel-rasalhague'),
+        [skaleBaseTestnet.id]: http(process.env.NEXT_PUBLIC_SKALE_RPC_URL || 'https://base-sepolia-testnet.skalenodes.com/v1/jubilant-horrible-ancha'),
     },
 })

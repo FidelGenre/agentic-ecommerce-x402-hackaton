@@ -38,7 +38,16 @@ const skaleNebula = defineChain({
     testnet: false,
 })
 
-const chains = { europa: skaleEuropa, titan: skaleTitan, calypso: skaleCalypso, nebula: skaleNebula }
+// SKALE Base Sepolia Testnet (PERMISSIONLESS)
+const skaleBase = defineChain({
+    id: 324705682,
+    name: 'SKALE Base Sepolia',
+    nativeCurrency: { decimals: 18, name: 'CREDIT', symbol: 'CREDIT' },
+    rpcUrls: { default: { http: ['https://base-sepolia-testnet.skalenodes.com/v1/jubilant-horrible-ancha'] } },
+    testnet: true,
+})
+
+const chains = { skaleBase }
 
 async function deploy() {
     const pk = '0x52d884477b9977f573b8874a094137735cb06006861cf9cfa1b0db9423858c2d'
@@ -76,7 +85,7 @@ async function deploy() {
             const hash = await walletClient.deployContract({
                 abi: artifact.abi,
                 bytecode: bytecode,
-                gas: 3_000_000n,
+                gas: 10_000_000n,
                 gasPrice: 100000n,
             })
             console.log(`TX Hash: ${hash}`)
