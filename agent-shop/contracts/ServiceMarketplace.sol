@@ -132,7 +132,7 @@ contract ServiceMarketplace {
         require(!offer.revealed, "Already revealed");
 
         bytes32 computedHash = keccak256(abi.encodePacked(_price, _nonce));
-        require(computedHash == offer.offerHash, "Hash mismatch — invalid reveal");
+        require(computedHash == offer.offerHash, "Hash mismatch - invalid reveal");
 
         offer.revealedPrice = _price;
         offer.revealed = true;
