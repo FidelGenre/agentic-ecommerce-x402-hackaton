@@ -17,7 +17,9 @@
     "lucide-react": "^0.563.0",
     "next": "16.1.6",
     "react": "19.2.3",
+    "react-confetti": "^6.4.0",
     "react-dom": "19.2.3",
+    "react-use": "^17.6.0",
     "tailwind-merge": "^3.4.0",
     "viem": "^2.45.3",
     "wagmi": "^3.4.3"
