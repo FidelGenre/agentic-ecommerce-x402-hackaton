@@ -13,7 +13,29 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || '')
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || 'no-key')
+
+// Safe Decision Fallback (for when API Key is missing or fails)
+const getFallbackDecision = (currentState: string) => {
+    if (currentState === 'OFFER_RECEIVED') {
+        return {
+            action: 'NEGOTIATE',
+            reasoning: 'Provider offer is within budget and meets quality thresholds. Encrypted bid verified via BITE — recommending acceptance.',
+            serviceType: 'General Compute',
+            maxBudget: '0.01',
+            searchQuery: 'compute provider',
+            confidence: 0.92,
+        }
+    }
+    return {
+        action: 'SEARCH',
+        reasoning: 'Analyzing compute requirements: prioritizing cost-efficiency and low latency providers on SKALE network.',
+        serviceType: 'General Compute',
+        maxBudget: '0.01',
+        searchQuery: 'compute provider',
+        confidence: 0.87,
+    }
+}
 
 export async function POST(req: NextRequest) {
     try {
@@ -64,37 +86,26 @@ You must output ONLY valid JSON (no markdown, no code fences) in this exact form
 
         return NextResponse.json({ success: true, decision, raw: text })
     } catch (error) {
-        console.error('Agent Brain API Error:', error)
+        console.error('Agent Brain API Error (Using Fallback):', error)
 
-        // Context-aware fallback based on workflow phase
-        const { currentState } = await req.clone().json().catch(() => ({ currentState: 'INITIAL_ANALYSIS' }))
+        // Robust Fallback handling to prevent 500
+        let currentState = 'INITIAL_ANALYSIS'
+        try {
+            // Try to rescue state from request clone, but don't crash if it fails
+            const body = await req.clone().json().catch(() => ({}))
+            if (body.currentState) currentState = body.currentState
+        } catch (e) { }
 
-        const fallbacks: Record<string, any> = {
-            INITIAL_ANALYSIS: {
-                action: 'SEARCH',
-                reasoning: 'Analyzing compute requirements: prioritizing cost-efficiency and low latency providers on SKALE network.',
-                serviceType: 'General Compute',
-                maxBudget: '0.01',
-                searchQuery: 'compute provider',
-                confidence: 0.87,
-            },
-            OFFER_RECEIVED: {
-                action: 'NEGOTIATE',
-                reasoning: 'Provider offer is within budget and meets quality thresholds. Encrypted bid verified via BITE — recommending acceptance.',
-                serviceType: 'General Compute',
-                maxBudget: '0.01',
-                searchQuery: 'compute provider',
-                confidence: 0.92,
-            },
-        }
+        const decision = getFallbackDecision(currentState)
 
         return NextResponse.json(
             {
                 success: false,
-                decision: fallbacks[currentState] || fallbacks.INITIAL_ANALYSIS,
+                decision,
                 error: String(error),
+                isFallback: true
             },
-            { status: 200 }
+            { status: 200 } // Return 200 so frontend doesn't see red 500
         )
     }
 }

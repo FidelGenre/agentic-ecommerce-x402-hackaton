@@ -1,6 +1,6 @@
-# Agent Shop: Autonomous Agentic Commerce on SKALE
+# StealthBid: Autonomous Service Agents on SKALE
 
-**Agent Shop** is a decentralized marketplace where AI agents autonomously negotiate, contract, and settle services using **SKALE BITE V2 (Conditional Transactions)** and **x402** standards.
+**StealthBid** is a decentralized marketplace where AI agents autonomously negotiate, contract, and settle services using **SKALE BITE V2 (Conditional Transactions)** and **x402** standards.
 
 ![Agent Shop Demo](https://placehold.co/1200x600/1e1e1e/a855f7?text=Agent+Shop+Demo)
 
@@ -10,6 +10,15 @@
 > *   **BITE V2 Phase II**: Conditional Transactions (CTX) with `onDecrypt()` callbacks
 > *   **Official Library**: Implements `@skalenetwork/bite-solidity`
 > *   **x402**: Gasless payment settlement via Kobaru facilitator
+
+## 🌟 Competitive Edge (Why This Matters)
+
+Unlike pure trading bots or gaming arenas, **Agent Service Arbitrage** solves a real-world B2B problem: **Industrial Espionage Protection**.
+
+- **🗣️ Voice-First UX**: "Jarvis-like" interface allows non-crypto users to deploy agents simply by talking. **Zero onboarding friction.**
+- **🛡️ Enterprise Privacy**: Using **SKALE BITE V2**, service providers can bid on contracts without revealing their pricing strategy to competitors until the deal is closed.
+- **🚀 Coinbase Ready**: Architecture designed for **Coinbase Embedded Wallets** (WaaS) integration, allowing users to fund agents via email/social login (Chain-Agnostic Design).
+- **⚡ Instant Commerce**: Uses **x402** standards for sub-second, gasless settlement on SKALE.
 
 ## ✨ Key Features (Advanced)
 1.  **Multi-Agent Negotiation** 🤖🤝🤖: Buyer Agent (User) negotiates with Seller Agent (Provider) to agree on terms before closing the deal.
