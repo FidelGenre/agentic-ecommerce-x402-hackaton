@@ -1,0 +1,3 @@
+[submodule "agent-shop/lib/bite-solidity"]
+	path = agent-shop/lib/bite-solidity
+	url = https://github.com/skalenetwork/bite-solidity
