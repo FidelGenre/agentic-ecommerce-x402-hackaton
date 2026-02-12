@@ -2,52 +2,16 @@ import { createWalletClient, createPublicClient, http, defineChain } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { readFileSync } from 'fs'
 
-// SKALE Europa DeFi Hub
-const skaleEuropa = defineChain({
-    id: 2046399126,
-    name: 'SKALE Europa DeFi Hub',
+// SKALE BITE V2 Sandbox (Official Hackathon Chain)
+const skaleSandbox = defineChain({
+    id: 103698795,
+    name: 'SKALE BITE V2 Sandbox',
     nativeCurrency: { decimals: 18, name: 'sFUEL', symbol: 'sFUEL' },
-    rpcUrls: { default: { http: ['https://mainnet.skalenodes.com/v1/elated-tan-skat'] } },
-    testnet: false,
-})
-
-// SKALE Titan AI Hub
-const skaleTitan = defineChain({
-    id: 1350216234,
-    name: 'SKALE Titan AI Hub',
-    nativeCurrency: { decimals: 18, name: 'sFUEL', symbol: 'sFUEL' },
-    rpcUrls: { default: { http: ['https://mainnet.skalenodes.com/v1/parallel-stormy-spica'] } },
-    testnet: false,
-})
-
-// SKALE Calypso Hub
-const skaleCalypso = defineChain({
-    id: 1564830818,
-    name: 'SKALE Calypso Hub',
-    nativeCurrency: { decimals: 18, name: 'sFUEL', symbol: 'sFUEL' },
-    rpcUrls: { default: { http: ['https://mainnet.skalenodes.com/v1/honorable-steel-rasalhague'] } },
-    testnet: false,
-})
-
-// SKALE Nebula Gaming Hub
-const skaleNebula = defineChain({
-    id: 1482601649,
-    name: 'SKALE Nebula Gaming Hub',
-    nativeCurrency: { decimals: 18, name: 'sFUEL', symbol: 'sFUEL' },
-    rpcUrls: { default: { http: ['https://mainnet.skalenodes.com/v1/green-giddy-denebola'] } },
-    testnet: false,
-})
-
-// SKALE Base Sepolia Testnet (PERMISSIONLESS)
-const skaleBase = defineChain({
-    id: 324705682,
-    name: 'SKALE Base Sepolia',
-    nativeCurrency: { decimals: 18, name: 'CREDIT', symbol: 'CREDIT' },
-    rpcUrls: { default: { http: ['https://base-sepolia-testnet.skalenodes.com/v1/jubilant-horrible-ancha'] } },
+    rpcUrls: { default: { http: ['https://base-sepolia-testnet.skalenodes.com/v1/bite-v2-sandbox'] } },
     testnet: true,
 })
 
-const chains = { skaleBase }
+const chains = { skaleSandbox }
 
 async function deploy() {
     const pk = '0x52d884477b9977f573b8874a094137735cb06006861cf9cfa1b0db9423858c2d'

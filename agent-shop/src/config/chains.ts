@@ -1,21 +1,21 @@
 import { defineChain } from 'viem'
 
-export const skaleBaseTestnet = defineChain({
-    id: 324_705_682,
-    name: 'SKALE Base Sepolia',
+export const skaleBiteSandbox = defineChain({
+    id: 103_698_795,
+    name: 'SKALE BITE V2 Sandbox',
     nativeCurrency: {
         decimals: 18,
-        name: 'CREDIT',
-        symbol: 'CREDIT',
+        name: 'sFUEL',
+        symbol: 'sFUEL',
     },
     rpcUrls: {
-        default: { http: ['https://base-sepolia-testnet.skalenodes.com/v1/jubilant-horrible-ancha'] },
+        default: { http: ['https://base-sepolia-testnet.skalenodes.com/v1/bite-v2-sandbox'] },
     },
     blockExplorers: {
-        default: { name: 'SKALE Explorer', url: 'https://jubilant-horrible-ancha.explorer.base-sepolia-testnet.skalenodes.com' },
+        default: { name: 'SKALE Explorer', url: 'https://base-sepolia-testnet-explorer.skalenodes.com:10032' },
     },
     testnet: true,
 })
 
-// Backward-compatible alias
-export const skaleChaosTestnet = skaleBaseTestnet
+// Update alias to point to the new Sandbox
+export const skaleChaosTestnet = skaleBiteSandbox
