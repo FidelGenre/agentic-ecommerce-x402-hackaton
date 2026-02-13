@@ -9,7 +9,9 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@coinbase/onchainkit": "^1.1.2",
     "@google/generative-ai": "^0.24.1",
+    "@rainbow-me/rainbowkit": "^2.2.10",
     "@skalenetwork/bite": "^0.7.1",
     "@tanstack/react-query": "^5.90.21",
     "clsx": "^2.1.1",
@@ -22,7 +24,7 @@
     "react-use": "^17.6.0",
     "tailwind-merge": "^3.4.0",
     "viem": "^2.45.3",
-    "wagmi": "^3.4.3"
+    "wagmi": "^2.19.5"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^6.1.0",

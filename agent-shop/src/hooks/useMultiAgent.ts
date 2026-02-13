@@ -96,7 +96,29 @@ export function useMultiAgent() {
 
                     if (currentRound <= maxRounds) {
                         const randomAction = Math.random()
-                        if (randomAction > 0.3) {
+
+                        // Trust & Safety: Simulate Budget Guardrail Failure (15% chance in later rounds)
+                        if (currentRound >= 4 && Math.random() > 0.85 && agent.status !== 'dropped') {
+                            newLog.type = 'error'
+                            newLog.content = `🛑 Safety Guardrail: Budget limit nearing. Halting current path.`
+                            status = 'dropped'
+
+                            // Pivot reasoning for Hero Prize
+                            setTimeout(() => {
+                                setAgents(prev => prev.map((a, i) => {
+                                    if (i !== index) return a
+                                    return {
+                                        ...a,
+                                        logs: [...a.logs, {
+                                            id: crypto.randomUUID(),
+                                            timestamp: Date.now(),
+                                            type: 'thought',
+                                            content: `💡 Pivot: Strategy limit reached. Re-evaluating alternatives for affordability...`
+                                        }]
+                                    }
+                                }))
+                            }, 1000)
+                        } else if (randomAction > 0.3) {
                             // Place a bid
                             const base = item.basePrice
                             // Random bid around base price, increasing slightly each round

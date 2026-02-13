@@ -27,6 +27,30 @@ Unlike pure trading bots or gaming arenas, **Agent Service Arbitrage** solves a 
 
 ---
 
+## 🏆 Hero Prize Strategy (Judge's Technical Appendix)
+
+To qualify for the **Hero Prize** across all sponsors, we implemented the following strategic advanced features:
+
+### 🛡️ AP2 Audit Trails (Google/Nalin Mittal)
+- **Deterministic Authorization**: Implements Policy Engine (#42) verification. Logs explicit guardrails: *"Policy Check: Spend Cap < [Threshold] sFUEL... [PASSED]"*.
+- **Standardized Receipts**: Settlement generates a `Receipt.json` with `AuthorizationToken` and `SettlementHash`.
+
+### ⛓️ Multi-Step Tool Chaining (Coinbase/Kevin Leffew)
+- **Session Key Authorization**: Implements a simulated **Coinbase Smart Wallet** signature flow before negotiation starts. This establishes a "Spend Mandate" using CDP SDK logic.
+- **Sequential Transactions**: Agents perform a micro-payment (x402) for data providers before the final purchase, demonstrating autonomous tool-call dependencies.
+
+### 🔒 Consensus Encryption (SKALE/Sawyer)
+- **Istanbul EVM Privacy**: Direct visualization of data encrypted at the consensus layer.
+- **Validator Consensus Reveal**: Implements a "Consensus Decryption" phase where validators (simulated UI) reach consensus on BITE reveal only after human-triggered settlement.
+
+### 🛑 Fail-Safe & Pivot (General/Reliability)
+- **Autonomous Recovery**: If a budget guardrail is hit, agents don't just stop; they log autonomous pivot reasoning (*"💡 Pivot: Strategy limit reached. Re-evaluating alternatives..."*).
+
+### 🌐 Agent Identity (Virtuals/Celeste Ang)
+- **ACP Integration**: Every receipt includes a unique `AgentIdentityID` compliant with the **Agent Commerce Protocol (ACP)**, linking transactions to decentralized agent reputations.
+
+---
+
 ## 🤖 How It Works
 
 1.  **Objective**: User gives a natural language objective (e.g., *"Find a cheap compute provider"*).

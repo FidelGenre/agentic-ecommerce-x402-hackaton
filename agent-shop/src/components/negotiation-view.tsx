@@ -6,7 +6,7 @@ import { AgentLog } from '@/hooks/useAgent'
 import { cn } from '@/lib/utils'
 import { AgentPersona } from './agent-selector'
 import { Item } from './item-selector'
-import { Zap, Trophy, TrendingDown, Clock, Lock, Shield } from 'lucide-react'
+import { Zap, Trophy, TrendingDown, Clock, Lock as LockIcon, Shield } from 'lucide-react'
 
 // Define a type for an agent's runtime state in the battle
 export interface BattleAgent {
@@ -123,9 +123,14 @@ export function NegotiationView({ agents, targetItem, round }: NegotiationViewPr
                                 {agent.status === 'winner' || agent.status === 'dropped' ? (
                                     agent.currentBid > 0 ? `${agent.currentBid} SKL` : '---'
                                 ) : (
-                                    <div className="flex items-center gap-2 text-cyan-400 text-xs uppercase tracking-wider">
-                                        <Lock className="w-3 h-3" />
-                                        Encrypted
+                                    <div className="flex flex-col items-end gap-1">
+                                        <div className="flex items-center gap-2 text-cyan-400 text-xs uppercase tracking-wider">
+                                            <LockIcon className="w-3 h-3" />
+                                            Encrypted
+                                        </div>
+                                        <div className="text-[8px] text-white/30 font-mono uppercase tracking-tighter">
+                                            Skale Consensus Level (Istanbul EVM)
+                                        </div>
                                     </div>
                                 )}
                             </span>

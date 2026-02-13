@@ -1,73 +1,127 @@
 'use client'
 
-import { useAccount, useConnect, useDisconnect, useBalance, useSwitchChain } from 'wagmi'
-import { injected } from 'wagmi/connectors'
-import { motion } from 'framer-motion'
-import { cn } from '@/lib/utils'
+import { ConnectButton } from '@rainbow-me/rainbowkit';
 
 export function WalletConnect() {
-    const { address, isConnected, chainId } = useAccount()
-    const { connect } = useConnect()
-    const { disconnect } = useDisconnect()
-    const { switchChain } = useSwitchChain()
-    const { data: balance } = useBalance({ address })
-
-    const TARGET_CHAIN_ID = Number(process.env.NEXT_PUBLIC_SKALE_CHAIN_ID || '103698795')
-
-    if (isConnected) {
-        if (chainId !== TARGET_CHAIN_ID) {
-            return (
-                <motion.button
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    onClick={() => switchChain({ chainId: TARGET_CHAIN_ID })}
-                    className="flex items-center gap-2 px-4 py-2 rounded-full bg-red-500/10 border border-red-500/50 text-red-400 font-mono text-xs hover:bg-red-500/20 transition-colors"
-                >
-                    <span className="relative flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
-                    </span>
-                    Wrong Network (Switch)
-                </motion.button>
-            )
-        }
-
-        return (
-            <div className="flex items-center gap-3">
-                {balance && (
-                    <div className="text-[10px] text-white/30 font-mono">
-                        {(Number(balance.value) / 10 ** balance.decimals).toFixed(4)} {balance.symbol}
-                    </div>
-                )}
-                <motion.button
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    onClick={() => disconnect()}
-                    className="group flex items-center gap-2 px-4 py-2 rounded-full glass glow-border cursor-pointer hover:border-red-500/30 transition-all"
-                >
-                    <span className="relative flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75 group-hover:bg-red-400" />
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500 group-hover:bg-red-500 transition-colors" />
-                    </span>
-                    <span className="font-mono text-sm text-green-400 group-hover:hidden">
-                        {address?.slice(0, 6)}...{address?.slice(-4)}
-                    </span>
-                    <span className="font-mono text-sm text-red-400 hidden group-hover:inline">
-                        Disconnect
-                    </span>
-                </motion.button>
-            </div>
-        )
-    }
-
     return (
-        <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => connect({ connector: injected() })}
-            className="px-6 py-2.5 rounded-full bg-gradient-to-r from-purple-600/20 to-cyan-600/20 hover:from-purple-600/30 hover:to-cyan-600/30 border border-white/10 transition-all font-medium text-sm backdrop-blur-md text-white/70 hover:text-white"
-        >
-            Connect Wallet
-        </motion.button>
-    )
+        <div className="flex items-center gap-2">
+            <ConnectButton.Custom>
+                {({
+                    account,
+                    chain,
+                    openAccountModal,
+                    openChainModal,
+                    openConnectModal,
+                    authenticationStatus,
+                    mounted,
+                }) => {
+                    // Note: If your app doesn't use authentication, you
+                    // can remove all 'authenticationStatus' checks
+                    const ready = mounted && authenticationStatus !== 'loading';
+                    const connected =
+                        ready &&
+                        account &&
+                        chain &&
+                        (!authenticationStatus ||
+                            authenticationStatus === 'authenticated');
+
+                    return (
+                        <div
+                            {...(!ready && {
+                                'aria-hidden': true,
+                                'style': {
+                                    opacity: 0,
+                                    pointerEvents: 'none',
+                                    userSelect: 'none',
+                                },
+                            })}
+                        >
+                            {(() => {
+                                if (!connected) {
+                                    return (
+                                        <button onClick={openConnectModal} type="button" className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-6 py-2 list-none transition-all font-bold text-sm shadow-lg shadow-blue-500/20 border-none flex items-center gap-2">
+                                            <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                                            Connect Wallet
+                                        </button>
+                                    );
+                                }
+
+                                if (chain.unsupported) {
+                                    return (
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={async () => {
+                                                    try {
+                                                        await window.ethereum.request({
+                                                            method: 'wallet_addEthereumChain',
+                                                            params: [{
+                                                                chainId: '0x62e60eb', // 103698795
+                                                                chainName: 'SKALE BITE V2 Sandbox',
+                                                                nativeCurrency: {
+                                                                    name: 'sFUEL',
+                                                                    symbol: 'sFUEL',
+                                                                    decimals: 18
+                                                                },
+                                                                rpcUrls: ['https://base-sepolia-testnet.skalenodes.com/v1/bite-v2-sandbox'],
+                                                                blockExplorerUrls: ['https://base-sepolia-testnet-explorer.skalenodes.com:10032']
+                                                            }]
+                                                        });
+                                                        // If successful, try to switch
+                                                        await window.ethereum.request({
+                                                            method: 'wallet_switchEthereumChain',
+                                                            params: [{ chainId: '0x62e60eb' }],
+                                                        });
+                                                    } catch (error) {
+                                                        console.error('Failed to add/switch network:', error);
+                                                        alert('Failed to add network automatically. Please use the Simulate button if this persists.');
+                                                    }
+                                                }}
+                                                type="button"
+                                                className="bg-red-500/10 border border-red-500/50 text-red-400 rounded-full px-4 py-2 font-mono text-xs hover:bg-red-500/20 transition-colors flex items-center gap-2"
+                                            >
+                                                <span className="relative flex h-2 w-2">
+                                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+                                                </span>
+                                                Wrong Network (Click to Fix)
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    // Hackathon "God Mode" Bypass
+                                                    const event = new CustomEvent('simulate-network-connection');
+                                                    window.dispatchEvent(event);
+                                                }}
+                                                className="bg-blue-500/10 border border-blue-500/50 text-blue-400 rounded-full px-3 py-2 font-mono text-[10px] hover:bg-blue-500/20 transition-colors"
+                                            >
+                                                [DEV] SIMULATE
+                                            </button>
+                                        </div>
+                                    );
+                                }
+
+                                return (
+                                    <div style={{ display: 'flex', gap: 12 }}>
+                                        <button
+                                            onClick={openAccountModal}
+                                            type="button"
+                                            className="group flex items-center gap-2 px-4 py-2 rounded-full glass glow-border cursor-pointer hover:border-blue-500/30 transition-all"
+                                        >
+                                            <div className="relative flex h-2 w-2">
+                                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                                                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+                                            </div>
+                                            {account.displayName}
+                                            {account.displayBalance
+                                                ? ` (${account.displayBalance})`
+                                                : ''}
+                                        </button>
+                                    </div>
+                                );
+                            })()}
+                        </div>
+                    );
+                }}
+            </ConnectButton.Custom>
+        </div>
+    );
 }
