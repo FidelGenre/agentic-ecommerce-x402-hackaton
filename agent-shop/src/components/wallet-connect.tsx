@@ -1,17 +1,37 @@
 'use client'
 
-import { useAccount, useConnect, useDisconnect, useBalance } from 'wagmi'
+import { useAccount, useConnect, useDisconnect, useBalance, useSwitchChain } from 'wagmi'
 import { injected } from 'wagmi/connectors'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 
 export function WalletConnect() {
-    const { address, isConnected } = useAccount()
+    const { address, isConnected, chainId } = useAccount()
     const { connect } = useConnect()
     const { disconnect } = useDisconnect()
+    const { switchChain } = useSwitchChain()
     const { data: balance } = useBalance({ address })
 
+    const TARGET_CHAIN_ID = Number(process.env.NEXT_PUBLIC_SKALE_CHAIN_ID || '103698795')
+
     if (isConnected) {
+        if (chainId !== TARGET_CHAIN_ID) {
+            return (
+                <motion.button
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    onClick={() => switchChain({ chainId: TARGET_CHAIN_ID })}
+                    className="flex items-center gap-2 px-4 py-2 rounded-full bg-red-500/10 border border-red-500/50 text-red-400 font-mono text-xs hover:bg-red-500/20 transition-colors"
+                >
+                    <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+                    </span>
+                    Wrong Network (Switch)
+                </motion.button>
+            )
+        }
+
         return (
             <div className="flex items-center gap-3">
                 {balance && (

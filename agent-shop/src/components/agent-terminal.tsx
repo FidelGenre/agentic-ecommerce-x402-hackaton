@@ -94,9 +94,9 @@ export function AgentTerminal({ logs, status }: AgentTerminalProps) {
             {/* Logs */}
             <div className="h-[350px] overflow-y-auto p-4 space-y-2 terminal-scroll font-mono text-sm">
                 <AnimatePresence initial={false}>
-                    {logs.map((log, i) => (
+                    {logs.map((log) => (
                         <motion.div
-                            key={log.timestamp + '-' + i}
+                            key={log.id}
                             initial={{ opacity: 0, x: -10, height: 0 }}
                             animate={{ opacity: 1, x: 0, height: 'auto' }}
                             transition={{ duration: 0.3, ease: 'easeOut' }}

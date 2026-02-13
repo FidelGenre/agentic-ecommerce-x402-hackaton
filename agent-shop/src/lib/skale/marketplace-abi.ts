@@ -10,6 +10,8 @@ export const SERVICE_MARKETPLACE_ABI = [
             { name: "_name", type: "string" },
             { name: "_description", type: "string" },
             { name: "_pricePerUnit", type: "uint256" },
+            { name: "_uptime", type: "uint8" },
+            { name: "_rating", type: "uint8" },
         ],
         outputs: [{ name: "serviceId", type: "uint256" }],
         stateMutability: "nonpayable",

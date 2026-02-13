@@ -9,7 +9,7 @@
  * 5. Settlement: User signs transaction to pay provider via x402
  */
 import { useState, useCallback, useRef } from 'react'
-import { useWalletClient, usePublicClient, useAccount } from 'wagmi'
+import { useWalletClient, usePublicClient, useAccount, useSwitchChain } from 'wagmi'
 import { createWalletClient, http, parseEther, type Hex, keccak256, encodePacked } from 'viem'
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'
 import { skaleBiteSandbox } from '@/config/chains'
@@ -19,6 +19,7 @@ import { BiteService } from '@/lib/bite-service'
 export type AgentState = 'IDLE' | 'THINKING' | 'NEGOTIATING' | 'TRANSACTING' | 'COMPLETED' | 'ERROR'
 
 export interface AgentLog {
+    id: string
     timestamp: number
     type: 'info' | 'thought' | 'action' | 'error' | 'tx'
     content: string
@@ -44,9 +45,9 @@ export function useAgent() {
 
     // Wagmi Hooks for User Signing
     const { address, isConnected, chainId: accountChainId } = useAccount()
+    const { switchChain } = useSwitchChain()
     const { data: walletClient } = useWalletClient({ chainId: Number(CHAIN_ID) })
     const publicClient = usePublicClient({ chainId: Number(CHAIN_ID) })
-
 
     // Burner Wallet for Automated Provider Agent
     // Generated once per session to acts as the counterparty
@@ -60,12 +61,20 @@ export function useAgent() {
     })
 
     const addLog = useCallback((type: AgentLog['type'], content: string, metadata?: any) => {
-        setLogs(prev => [...prev, {
-            timestamp: Date.now(),
-            type,
-            content,
-            metadata
-        }])
+        setLogs(prev => {
+            // Prevent duplicate adjacent logs for "Searching" spam
+            const lastLog = prev[prev.length - 1]
+            if (lastLog && lastLog.content === content && Date.now() - lastLog.timestamp < 1000) {
+                return prev
+            }
+            return [...prev, {
+                id: crypto.randomUUID(),
+                timestamp: Date.now(),
+                type,
+                content,
+                metadata
+            }]
+        })
     }, [])
 
     const reset = useCallback(() => {
@@ -83,24 +92,40 @@ export function useAgent() {
         return data.decision
     }
 
-    const processRequest = useCallback(async (objective: string) => {
+    const processRequest = useCallback(async (objective: string, personaDescription?: string) => {
         reset()
         setState('THINKING')
 
-        if (!walletClient || !publicClient) {
-            const reason = !walletClient ? 'Wallet Client missing' : 'Public Client missing'
-            console.warn(`Wallet/Public client missing: ${reason}`)
-            addLog('error', `⚠️ Wallet not connected. Please connect to interact with SKALE. (Detail: ${reason})`)
+        // 1. Check Connection
+        if (!isConnected) {
+            addLog('error', '⚠️ Wallet not connected. Please click "Connect Wallet" top right.')
             return
         }
 
-        // Verify we are on the correct chain
-        const currentChainId = await publicClient.getChainId()
-        if (currentChainId !== Number(CHAIN_ID)) {
-            addLog('error', `🛑 Wrong Network! Please switch your wallet to SKALE BITE V2 Sandbox (ID: ${CHAIN_ID}). Currently on: ${currentChainId}`)
-            setState('ERROR')
+        // 2. Check Network & Switch if needed
+        if (accountChainId !== Number(CHAIN_ID)) {
+            addLog('thought', `⚠️ Wrong Network detected (${accountChainId}). Requesting switch to SKALE BITE V2...`)
+            try {
+                switchChain({ chainId: Number(CHAIN_ID) })
+                addLog('action', 'Please approve the network switch in your wallet, then click "Deploy Agent" again.')
+                return
+            } catch (error: any) {
+                console.error('Failed to switch network:', error)
+                addLog('error', `❌ Failed to switch network: ${error.message || 'Unknown error'}`)
+                return
+            }
+        }
+
+        // 3. Client Availability Check
+        if (!walletClient || !publicClient) {
+            const reason = !walletClient ? 'Wallet Client not ready' : 'Public Client not ready'
+            console.warn(`Wallet/Public client missing: ${reason}`)
+            addLog('error', `⚠️ Connection not fully ready. Please wait a moment and try again. (Detail: ${reason})`)
             return
         }
+
+        // Verify we are on the correct chain (redundant but safe)
+        const currentChainId = await publicClient.getChainId()
 
         try {
             addLog('info', `🎯 Received objective: "${objective}"`)
@@ -109,9 +134,13 @@ export function useAgent() {
             // ━━━━ Phase 1: Gemini AI Analysis ━━━━
             addLog('thought', '🧠 [Gemini Pro] Analyzing service requirements...')
 
+            const finalObjective = personaDescription
+                ? `[Role: ${personaDescription}] ${objective}`
+                : objective
+
             let decision: GeminiDecision
             try {
-                decision = await consultBrain(objective, 'INITIAL_ANALYSIS')
+                decision = await consultBrain(finalObjective, 'INITIAL_ANALYSIS')
                 addLog('thought', `🧠 [Gemini] ${decision.reasoning}`, {
                     action: decision.action,
                     serviceType: decision.serviceType,
@@ -170,7 +199,13 @@ export function useAgent() {
                     address: CONTRACT as Hex,
                     abi: SERVICE_MARKETPLACE_ABI,
                     functionName: 'registerService',
-                    args: [providerName, 'Automated Response Node', parseEther(decision.maxBudget)],
+                    args: [
+                        providerName,
+                        'Automated Response Node',
+                        parseEther(decision.maxBudget),
+                        99, // Uptime (uint8)
+                        50  // Rating (uint8, 50 = 5.0)
+                    ],
                     gasPrice: currentGasPrice
                 })
                 addLog('tx', `✅ Provider Agent Registered on-chain`, { hash: regHash })
@@ -281,7 +316,7 @@ export function useAgent() {
                 addLog('error', `Agent failed: ${error instanceof Error ? error.message : String(error)}`)
             }
         }
-    }, [addLog, reset, walletClient, publicClient, providerClient, providerAccount])
+    }, [addLog, reset, walletClient, publicClient, providerClient, providerAccount, isConnected, accountChainId, switchChain])
 
     return {
         state,
