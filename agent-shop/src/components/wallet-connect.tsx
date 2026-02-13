@@ -50,32 +50,7 @@ export function WalletConnect() {
                                     return (
                                         <div className="flex gap-2">
                                             <button
-                                                onClick={async () => {
-                                                    try {
-                                                        await window.ethereum.request({
-                                                            method: 'wallet_addEthereumChain',
-                                                            params: [{
-                                                                chainId: '0x62e60eb', // 103698795
-                                                                chainName: 'SKALE BITE V2 Sandbox',
-                                                                nativeCurrency: {
-                                                                    name: 'sFUEL',
-                                                                    symbol: 'sFUEL',
-                                                                    decimals: 18
-                                                                },
-                                                                rpcUrls: ['https://base-sepolia-testnet.skalenodes.com/v1/bite-v2-sandbox'],
-                                                                blockExplorerUrls: ['https://base-sepolia-testnet-explorer.skalenodes.com:10032']
-                                                            }]
-                                                        });
-                                                        // If successful, try to switch
-                                                        await window.ethereum.request({
-                                                            method: 'wallet_switchEthereumChain',
-                                                            params: [{ chainId: '0x62e60eb' }],
-                                                        });
-                                                    } catch (error) {
-                                                        console.error('Failed to add/switch network:', error);
-                                                        alert('Failed to add network automatically. Please use the Simulate button if this persists.');
-                                                    }
-                                                }}
+                                                onClick={openChainModal}
                                                 type="button"
                                                 className="bg-red-500/10 border border-red-500/50 text-red-400 rounded-full px-4 py-2 font-mono text-xs hover:bg-red-500/20 transition-colors flex items-center gap-2"
                                             >
@@ -83,17 +58,7 @@ export function WalletConnect() {
                                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
                                                     <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
                                                 </span>
-                                                Wrong Network (Click to Fix)
-                                            </button>
-                                            <button
-                                                onClick={() => {
-                                                    // Hackathon "God Mode" Bypass
-                                                    const event = new CustomEvent('simulate-network-connection');
-                                                    window.dispatchEvent(event);
-                                                }}
-                                                className="bg-blue-500/10 border border-blue-500/50 text-blue-400 rounded-full px-3 py-2 font-mono text-[10px] hover:bg-blue-500/20 transition-colors"
-                                            >
-                                                [DEV] SIMULATE
+                                                Wrong Network
                                             </button>
                                         </div>
                                     );

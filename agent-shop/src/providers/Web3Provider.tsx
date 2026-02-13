@@ -15,11 +15,12 @@ const connectors = connectorsForWallets(
     [
         {
             groupName: 'Recommended',
-            wallets: [coinbaseWallet],
-        },
-        {
-            groupName: 'Others',
-            wallets: [metaMaskWallet, rainbowWallet, walletConnectWallet],
+            wallets: [
+                coinbaseWallet,
+                metaMaskWallet,
+                rainbowWallet,
+                walletConnectWallet
+            ],
         },
     ],
     {

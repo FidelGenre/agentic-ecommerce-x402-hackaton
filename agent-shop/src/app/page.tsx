@@ -59,7 +59,8 @@ interface Receipt {
 
 
 export default function Home() {
-  const { connector } = useAccount()
+  const { connector, address: userAddress } = useAccount()
+  const { data: walletClient } = useWalletClient()
   const [showLanding, setShowLanding] = useState(true)
   const [mode, setMode] = useState<'1v1' | 'multi'>('1v1')
 
@@ -90,6 +91,10 @@ export default function Home() {
   const [treasuryAccount, setTreasuryAccount] = useState<any>(null)
   const [treasuryBalance, setTreasuryBalance] = useState<string>('0')
   const [isDepositing, setIsDepositing] = useState(false)
+  const [isFundingModalOpen, setIsFundingModalOpen] = useState(false)
+  const [depositAmount, setDepositAmount] = useState('1.0')
+  const [activeTab, setActiveTab] = useState<'deposit' | 'withdraw'>('deposit')
+
 
   // Initialize Treasury
   useEffect(() => {
@@ -126,70 +131,102 @@ export default function Home() {
   }, [treasuryAccount, isDepositing, publicClient])
 
   // Direct SDK Integration for "Coinbase Payment"
-  const handleDeposit = async () => {
-    if (!treasuryAccount) return
+  // Robust Deposit Handler
+  // Open Modal First (Safety Step)
+  // Open Modal First (Safety Step)
+  const openFundingModal = () => {
+    setActiveTab('deposit')
+    setIsFundingModalOpen(true)
+  }
+
+  // Execute Deposit only when confirmed
+  const executeDeposit = async () => {
+    if (!treasuryAccount || !walletClient) return
     setIsDepositing(true)
+    setAuditLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] System: Initiating Treasury Deposit...`])
 
     try {
-      // Initialize SDK
-      const sdk = new CoinbaseWalletSDK({
-        appName: 'StealthBid Agents',
-        appLogoUrl: 'https://avatars.githubusercontent.com/u/108550195?s=200&v=4',
-      })
-
-      // Create Provider
-      const provider = sdk.makeWeb3Provider()
-
-      // 1. Connect
-      const accounts = await provider.request({ method: 'eth_requestAccounts' })
-      const userAddress = (accounts as string[])[0]
-      console.log("Connected via SDK:", userAddress)
-
-      // 2. Add SKALE Chain (Force)
+      // Try to switch chain first
       try {
-        // @ts-ignore
-        await provider.request({
-          method: 'wallet_addEthereumChain',
-          params: [{
-            chainId: '0x62e60eb', // 103698795
-            chainName: 'SKALE BITE V2 Sandbox',
-            nativeCurrency: { name: 'sFUEL', symbol: 'sFUEL', decimals: 18 },
-            rpcUrls: ['https://base-sepolia-testnet.skalenodes.com/v1/bite-v2-sandbox'],
-            blockExplorerUrls: ['https://base-sepolia-testnet-explorer.skalenodes.com:10032']
-          }]
-        })
-      } catch (e) {
-        console.warn("Chain add warning", e)
+        await walletClient.switchChain({ id: skaleBiteSandbox.id })
+      } catch (switchError: any) {
+        // If switch fails (or not supported), try to add chain
+        try {
+          await walletClient.addChain({ chain: skaleBiteSandbox })
+        } catch (addError) {
+          console.warn("Could not add chain automatically", addError)
+          // If both fail, we must fallback to manual
+          throw new Error("Network switch failed")
+        }
       }
 
-      // 3. Switch Chain
-      // @ts-ignore
-      await provider.request({
-        method: 'wallet_switchEthereumChain',
-        params: [{ chainId: '0x62e60eb' }]
+      // Send Transaction
+      const [address] = await walletClient.getAddresses()
+      const hash = await walletClient.sendTransaction({
+        account: address,
+        to: treasuryAccount.address,
+        value: parseEther(depositAmount), // Use user input
+        chain: skaleBiteSandbox
       })
 
-      // 4. Send Transaction
-      // @ts-ignore
-      const txHash = await provider.request({
-        method: 'eth_sendTransaction',
-        params: [{
-          from: userAddress,
-          to: treasuryAccount.address,
-          value: parseEther('1').toString(16), // Hex value
-        }]
-      })
-
-      setAuditLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] SDK Payment Sent: ${txHash}`])
-      await publicClient.waitForTransactionReceipt({ hash: txHash as `0x${string}` })
-      setAuditLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] Treasury Funded via Coinbase SDK!`])
+      setAuditLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] Payment Sent: ${hash}`])
+      await publicClient.waitForTransactionReceipt({ hash })
+      setAuditLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] Treasury Funded Successfully!`])
 
       const newBal = await publicClient.getBalance({ address: treasuryAccount.address })
       setTreasuryBalance(formatEther(newBal))
+      setIsFundingModalOpen(false) // Close modal on success
 
     } catch (err: any) {
-      console.error("SDK Deposit Failed", err)
-      alert(`Coinbase SDK Error: ${err.message}`)
+      console.warn("Programmatic Deposit Failed", err)
+      // Keep modal open so user can copy address
+      alert("Auto-send failed. Please copy the address and send funds manually.")
+    } finally {
+      setIsDepositing(false)
+    }
+  }
+
+  const handleWithdraw = async () => {
+    if (!treasuryAccount || !userAddress) {
+      alert("Please connect your wallet first.")
+      return
+    }
+    setIsDepositing(true)
+    try {
+      // Create a wallet client for the treasury
+      const treasuryClient = createWalletClient({
+        account: treasuryAccount,
+        chain: skaleBiteSandbox,
+        transport: http(process.env.NEXT_PUBLIC_SKALE_RPC_URL || 'https://base-sepolia-testnet.skalenodes.com/v1/bite-v2-sandbox')
+      })
+
+      const balance = parseEther(treasuryBalance)
+      // Safety buffer: keep 0.0001 sFUEL for gas
+      const amountToSend = balance - parseEther('0.0001')
+
+      if (amountToSend <= 0n) {
+        alert("Insufficient funds to withdraw.")
+        return
+      }
+
+      const hash = await treasuryClient.sendTransaction({
+        account: treasuryAccount,
+        to: userAddress,
+        value: amountToSend,
+        chain: skaleBiteSandbox
+      })
+
+      setAuditLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] Funds Rescued: ${hash}`])
+      await publicClient.waitForTransactionReceipt({ hash })
+
+      const newBal = await publicClient.getBalance({ address: treasuryAccount.address })
+      setTreasuryBalance(formatEther(newBal))
+      alert(`Success! Funds returned to ${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`)
+      setIsFundingModalOpen(false)
+
+    } catch (e: any) {
+      console.error("Rescue failed", e)
+      alert("Rescue failed: " + e.message)
     } finally {
       setIsDepositing(false)
     }
@@ -257,7 +294,6 @@ export default function Home() {
     return () => window.removeEventListener('simulate-network-connection', handleSimulation)
   }, [])
 
-  const { data: walletClient } = useWalletClient() // Add this hook
 
   const handleDeploy = async () => {
     if (mode === '1v1') {
@@ -269,8 +305,7 @@ export default function Home() {
       // Start Battle
       if (!selectedItem || selectedAgentIds.length < 2) return
 
-      // Start Battle
-      if (!selectedItem || selectedAgentIds.length < 2) return
+
 
       // CHECK TREASURY
       const currentBal = Number(treasuryBalance)
@@ -339,7 +374,110 @@ export default function Home() {
 
   return (
     <main className="fixed inset-0 h-screen w-screen overflow-hidden bg-black flex flex-col items-center relative text-white">
-      {/* Funding Modal Removed for Direct SDK Integration */}
+      {/* Funding Modal Overlay */}
+      <AnimatePresence>
+        {isFundingModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="w-full max-w-md bg-[#1a1a1a] border border-white/10 rounded-2xl p-6 shadow-2xl relative overflow-hidden"
+            >
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-500 to-emerald-500" />
+
+              <button
+                onClick={() => setIsFundingModalOpen(false)}
+                className="absolute top-4 right-4 p-2 hover:bg-white/10 rounded-full transition-colors"
+              >
+                <X className="w-5 h-5 text-white/50" />
+              </button>
+
+              <div className="space-y-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-green-500/10 rounded-xl">
+                    <Zap className="w-6 h-6 text-green-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-white">Fund Agent Treasury</h3>
+                    <p className="text-white/50 text-sm">Required for Autonomous Mode</p>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl space-y-2">
+                  <div className="flex items-start gap-2">
+                    <div className="mt-0.5 w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+                    <p className="text-amber-200 text-xs leading-relaxed">
+                      <b>Automated Zap Failed:</b> Your wallet (Coinbase Smart Wallet) blocked the SKALE network switch.
+                      Please send funds manually or use a standard EOA wallet.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-white/40 uppercase tracking-wider">Send Amount</label>
+                    <div className="bg-white/5 rounded-xl border border-white/10 font-mono text-lg text-green-400 overflow-hidden flex items-center">
+                      <input
+                        type="number"
+                        value={depositAmount}
+                        onChange={(e) => setDepositAmount(e.target.value)}
+                        className="bg-transparent w-full p-3 outline-none text-green-400 placeholder-green-400/30"
+                        placeholder="1.0"
+                        step="0.1"
+                      />
+                      <span className="pr-4 text-sm text-white/50">sFUEL</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-white/40 uppercase tracking-wider">To Address (Agent Treasury)</label>
+                    <div
+                      onClick={() => {
+                        if (treasuryAccount) {
+                          navigator.clipboard.writeText(treasuryAccount.address)
+                          alert("Address Copied!")
+                        }
+                      }}
+                      className="group relative cursor-pointer px-4 py-3 bg-white/5 hover:bg-white/10 rounded-xl border border-white/10 transition-colors"
+                    >
+                      <div className="font-mono text-sm text-white/70 break-all pr-8">
+                        {treasuryAccount?.address || "Loading..."}
+                      </div>
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 opacity-50 group-hover:opacity-100 transition-opacity">
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-2">
+                  <div className="flex items-center justify-between text-xs text-white/30 mb-4">
+                    <span>Current Balance:</span>
+                    <span className={Number(treasuryBalance) > 0 ? "text-green-400 font-mono" : "text-white font-mono"}>
+                      {Number(treasuryBalance).toFixed(4)} sFUEL
+                    </span>
+                  </div>
+
+                  <button
+                    onClick={() => setIsFundingModalOpen(false)}
+                    className="w-full py-3.5 bg-white text-black rounded-xl font-bold hover:scale-[1.02] active:scale-[0.98] transition-all"
+                  >
+                    I've Sent the Funds
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="mesh-bg absolute inset-0 z-0 pointer-events-none" />
       <div className="grid-overlay absolute inset-0 z-0 pointer-events-none" />
@@ -497,7 +635,7 @@ export default function Home() {
                   </span>
                 </div>
                 <button
-                  onClick={handleDeposit}
+                  onClick={openFundingModal}
                   className="p-1.5 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors"
                   title="Fund Treasury (Manual)"
                 >
