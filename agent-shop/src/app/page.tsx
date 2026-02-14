@@ -1,66 +1,80 @@
 /**
- * Agent Shop - Main Interface
+ * Agent Shop - Main DApp Interface 🏪
  * 
- * A glassmorphism-styled dashboard for interacting with the autonomous agent.
- * Features:
- * - Voice Input (Web Speech API)
- * - Real-time Agent Thought Terminal
- * - Celebration Animations (Confetti)
- * - Responsive Layout
- * - Multi-Agent Negotiation Grid
+ * This is the central control hub of the application.
+ * It manages the UI state for:
+ * 1. "Hero Mode": 1v1 negotiation with a Google Gemini powered agent.
+ * 2. "Battle Royale": Multi-agent competitive auction.
+ * 3. Wallet Connection & Receipt Visualization.
+ * 
+ * @module Page
  */
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useAccount, useWalletClient, useSwitchChain, usePublicClient } from 'wagmi'
-import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'
-import { createWalletClient, http, formatEther, parseEther, createPublicClient } from 'viem'
-import { skaleBiteSandbox } from '@/config/chains'
-import { WalletConnect } from '@/components/wallet-connect'
-import { AgentTerminal } from '@/components/agent-terminal'
-import { ProgressTimeline } from '@/components/progress-timeline'
-import { EventSidebar } from '@/components/event-sidebar'
-import { LeftSidebar } from '@/components/left-sidebar'
-import { ItemSelector, MOCK_ITEMS, Item } from '@/components/item-selector'
-import { AgentSelector, AGENT_PERSONAS, AgentPersona } from '@/components/agent-selector'
-import { NegotiationView } from '@/components/negotiation-view'
-import { useAgent, AgentLog } from '@/hooks/useAgent'
-import { useMultiAgent } from '@/hooks/useMultiAgent'
-import { useVoiceInput } from '@/hooks/useVoiceInput'
+import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Sparkles, Mic, Shield, Cpu, Zap, Globe, ArrowLeft, Users, User, FileJson, CheckCircle2, X as XIcon, Lock as LockIcon, ShieldCheck, ChevronLeft, Volume2, Wallet, RefreshCw, Loader2, Menu, History, Box, Github, Code, ExternalLink } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import {
+  Bot,
+  Wallet,
+  Terminal,
+  ShieldCheck,
+  Zap,
+  ChevronRight,
+  Sparkles,
+  Users,
+  Trophy,
+  History,
+  X,
+  Lock,
+  Unlock,
+  CheckCircle,
+  AlertTriangle,
+  Menu // Added Hamburger Menu Icon by importing 'Menu'
+} from 'lucide-react'
+import { useAccount, useBalance, useDisconnect } from 'wagmi'
+import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'
+import { createWalletClient, http, formatEther, type Hex } from 'viem'
+import { skaleBiteSandbox } from '@/config/chains'
+import Confetti from 'react-confetti'
+import { useWindowSize } from 'react-use'
+import clsx from 'clsx'
+import { twMerge } from 'tailwind-merge'
 
+// Custom Hooks for Logic
+import { useAgent, AgentState } from '@/hooks/useAgent'
+import { useMultiAgent, MultiAgentState } from '@/hooks/useMultiAgent'
 
-export interface Receipt {
+// Components
+import { WalletConnect } from '@/components/wallet-connect'
+import { EventSidebar } from '@/components/event-sidebar'
+import LeftSidebar from '@/components/left-sidebar' // Import LeftSidebar
+
+// --- Types ---
+
+/**
+ * Receipt - Represents a verified service agreement
+ * Stored in history and displayed in the modal.
+ */
+interface Receipt {
   id: string
-  timestamp: string // ISO
-  intentMandate: {
-    type: 'purchase_order' | 'data_request'
-    target: string // The objective or product
-    maxBudget: string // In sFUEL or native
+  service: string
+  price: string
+  provider: string
+  timestamp: number
+  txHash: string // SKALE Transaction Hash
+  // Google Hackathon: AP2 Audit fields
+  intentMandate: string
+  authorizationToken: string
+  agentIdentityID: string // Virtuals Protocol Identity
+  payment?: {
+    amount: string
+    token: string
+    settlementHash?: string
   }
-  cartMandate: {
-    provider: string
-    item: string
-    finalPrice: string
-    currency: string
-    agentId: string
-  }
-  authorizationToken: string // AP2 Policy #42
-  agentIdentityID: string // Virtuals ACP ID
-  payment: {
-    network: 'SKALE Nebula'
-    chainId: number
-    settlementHash: string // AP2 Terminology
-    status: 'settled'
-  }
-  logs: AgentLog[]
 }
 
-// ─────────────── App Constants ───────────────
-const PROVIDER_ADDRESS = '0xc4083B1E81ceb461Ccef3FDa8A9F24F0d764B6D8' as `0x${string}` // Simulation Service Provider
-const EXPLORER_URL = 'https://base-sepolia-testnet-explorer.skalenodes.com:10032'
+// --- Constants ---
+const TREASURY_ADDRESS = '0x7e...3921' // Mock Treasury for demo
 
 export default function Home() {
   const { connector, address: userAddress, chainId: accountChainId } = useAccount()
@@ -958,7 +972,10 @@ export default function Home() {
                       <EventSidebar
                         logs={mode === '1v1' ? logs : agents.flatMap(a => a.logs)}
                         deals={completedDeals}
-                        onClose={handleCloseReceipt}
+                        onClose={(r) => {
+                          if (r) handleCloseReceipt(r)
+                          setShowMobileRight(false)
+                        }}
                       />
                     </div>
                   </motion.div>
