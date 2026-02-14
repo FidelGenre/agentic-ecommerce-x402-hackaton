@@ -90,13 +90,13 @@ export function EventSidebar({ logs, deals, onClose }: EventSidebarProps) {
                                 </motion.div>
                             ))
                         ) : (
-                            <div className="flex flex-col items-center justify-center h-full opacity-20 py-20">
+                            <div key="empty-logs" className="flex flex-col items-center justify-center h-full opacity-20 py-20">
                                 <Box className="w-12 h-12 mb-4" />
                                 <p className="text-[11px] font-bold">No events yet</p>
                                 <p className="text-[9px] max-w-[150px] text-center">Smart contracts auto-execute when agents reach a deal</p>
                             </div>
                         )}
-                        <div ref={logEndRef} />
+                        <div key="log-end-anchor" ref={logEndRef} />
                     </AnimatePresence>
                 </div>
             </div>
@@ -160,7 +160,7 @@ export function EventSidebar({ logs, deals, onClose }: EventSidebarProps) {
                                 </motion.div>
                             ))
                         ) : (
-                            <div className="flex flex-col items-center justify-center h-full opacity-20 py-10">
+                            <div key="empty-deals" className="flex flex-col items-center justify-center h-full opacity-20 py-10">
                                 <History className="w-8 h-8 mb-3" />
                                 <p className="text-[10px] font-bold whitespace-nowrap">No completed deals yet</p>
                             </div>

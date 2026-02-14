@@ -1,7 +1,7 @@
 'use client'
 
-import { motion } from 'framer-motion'
-import { Bot, User, Skull, Briefcase } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Bot, User, Skull, Briefcase, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export interface AgentPersona {
@@ -45,10 +45,11 @@ interface AgentSelectorProps {
     selectedAgents: string[]
     onToggle: (agentId: string) => void
     onSelectAll?: () => void
+    onDelete?: (id: string) => void
     mode?: 'single' | 'multi'
 }
 
-export function AgentSelector({ agents, selectedAgents, onToggle, onSelectAll, mode = 'multi' }: AgentSelectorProps) {
+export function AgentSelector({ agents, selectedAgents, onToggle, onSelectAll, onDelete, mode = 'multi' }: AgentSelectorProps) {
     const isAllSelected = selectedAgents.length === agents.length
 
     return (
@@ -67,7 +68,7 @@ export function AgentSelector({ agents, selectedAgents, onToggle, onSelectAll, m
                 )}
             </div>
             <div className="space-y-2">
-                {AGENT_PERSONAS.map((agent) => {
+                {agents.map((agent) => {
                     const isSelected = selectedAgents.includes(agent.id)
                     return (
                         <motion.button
@@ -85,6 +86,19 @@ export function AgentSelector({ agents, selectedAgents, onToggle, onSelectAll, m
                             {/* Selection Glow */}
                             {isSelected && (
                                 <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-transparent pointer-events-none" />
+                            )}
+
+                            {/* Delete Button */}
+                            {onDelete && (
+                                <div
+                                    onClick={(e) => {
+                                        e.stopPropagation()
+                                        onDelete(agent.id)
+                                    }}
+                                    className="absolute right-2 top-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 hover:bg-red-500/20 rounded-lg text-white/20 hover:text-red-400"
+                                >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                </div>
                             )}
 
                             <div className="flex items-center gap-4 relative z-10">

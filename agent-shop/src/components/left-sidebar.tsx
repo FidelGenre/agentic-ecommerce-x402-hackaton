@@ -30,6 +30,8 @@ interface LeftSidebarProps {
     treasuryBalance: string
     onFund: () => void
     onClose?: () => void
+    onDeleteItem: (id: string) => void
+    onDeleteAgent: (id: string) => void
 }
 
 export function LeftSidebar({
@@ -54,7 +56,9 @@ export function LeftSidebar({
     isTreasuryReady,
     treasuryBalance,
     onFund,
-    onClose
+    onClose,
+    onDeleteItem,
+    onDeleteAgent
 }: LeftSidebarProps) {
     const [speed, setSpeed] = (typeof window !== 'undefined') ? [5, (v: any) => { }] as const : [5, (v: any) => { }] as const; // Mocked state for UI
 
@@ -142,7 +146,7 @@ export function LeftSidebar({
                                 <Plus className="w-3 h-3" />
                             </button>
                         </div>
-                        <ItemSelector items={items} selectedItem={selectedItem} onSelect={setSelectedItem} />
+                        <ItemSelector items={items} selectedItem={selectedItem} onSelect={setSelectedItem} onDelete={onDeleteItem} />
                     </div>
 
                     <div className="w-full h-px bg-white/5" />
@@ -166,6 +170,7 @@ export function LeftSidebar({
                             mode={mode === '1v1' ? 'single' : 'multi'}
                             selectedAgents={mode === '1v1' ? [selected1v1AgentId] : selectedAgentIds}
                             onToggle={toggleAgentSelection}
+                            onDelete={onDeleteAgent}
                         />
                     </div>
                 </div>

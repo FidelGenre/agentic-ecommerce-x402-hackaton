@@ -330,6 +330,22 @@ export default function Home() {
     setShowReceipt(true)
   }
 
+  const handleDownloadReceipt = (rcpt: Receipt) => {
+    const blob = new Blob([JSON.stringify(rcpt, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `agent-receipt-${rcpt.id}.json`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+  const handleCloseReceipt = () => {
+    setShowReceipt(false)
+    resetAgent()
+    if (mode === '1v1') setObjective('')
+  }
   useEffect(() => {
     const hasLaunched = localStorage.getItem('hasLaunched')
     if (hasLaunched) {
@@ -435,6 +451,10 @@ export default function Home() {
 
   const handleAddItemFinal = () => {
     if (!newItemBase.name) return
+    if (items.length >= 5) {
+      alert("Maximum 5 items allowed. Please delete one first.")
+      return
+    }
     const newItem: Item = {
       id: `custom_${Date.now()}`,
       name: newItemBase.name,
@@ -452,6 +472,10 @@ export default function Home() {
 
   const handleAddAgentFinal = () => {
     if (!newAgentBase.name) return
+    if (agentsList.length >= 5) {
+      alert("Maximum 5 agents allowed. Please delete one first.")
+      return
+    }
     const newAgent: AgentPersona = {
       id: `custom_agent_${Date.now()}`,
       name: newAgentBase.name,
@@ -462,6 +486,29 @@ export default function Home() {
     }
     setAgentsList(prev => [...prev, newAgent])
     setShowAddAgentModal(false)
+  }
+
+  const handleDeleteItem = (id: string) => {
+    if (items.length <= 1) {
+      alert("Must have at least one target item.")
+      return
+    }
+    setItems(prev => prev.filter(i => i.id !== id))
+    if (selectedItem?.id === id) {
+      setSelectedItem(null)
+    }
+  }
+
+  const handleDeleteAgent = (id: string) => {
+    if (agentsList.length <= 2) {
+      alert("Must have at least two agents for Multi-Agent mode.")
+      return
+    }
+    setAgentsList(prev => prev.filter(a => a.id !== id))
+    if (selected1v1AgentId === id) {
+      setSelected1v1AgentId(agentsList[0].id)
+    }
+    setSelectedAgentIds(prev => prev.filter(pid => pid !== id))
   }
 
   return (
@@ -706,7 +753,9 @@ export default function Home() {
                   onDeploy={handleDeploy}
                   onAddItem={() => setShowAddItemModal(true)}
                   onAddAgent={() => setShowAddAgentModal(true)}
-                  isDeploying={agentState !== 'IDLE' || isAuthorizing || isUnlockingData}
+                  onDeleteItem={handleDeleteItem}
+                  onDeleteAgent={handleDeleteAgent}
+                  isDeploying={['THINKING', 'NEGOTIATING', 'TRANSACTING'].includes(agentState) || isAuthorizing || isUnlockingData}
                   isReady={isReadyToNegotiate}
                   isTreasuryReady={!!treasuryAccount}
                   onFund={openFundingModal}
@@ -748,7 +797,9 @@ export default function Home() {
                         onDeploy={() => { handleDeploy(); setShowMobileLeft(false); }}
                         onAddItem={() => { setShowAddItemModal(true); setShowMobileLeft(false); }}
                         onAddAgent={() => { setShowAddAgentModal(true); setShowMobileLeft(false); }}
-                        isDeploying={agentState !== 'IDLE' || isAuthorizing || isUnlockingData}
+                        onDeleteItem={handleDeleteItem}
+                        onDeleteAgent={handleDeleteAgent}
+                        isDeploying={['THINKING', 'NEGOTIATING', 'TRANSACTING'].includes(agentState) || isAuthorizing || isUnlockingData}
                         isReady={isReadyToNegotiate}
                         isTreasuryReady={!!treasuryAccount}
                         onFund={openFundingModal}
@@ -907,7 +958,7 @@ export default function Home() {
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-[#1a1b26] rounded-2xl border border-white/10 w-full max-w-2xl overflow-hidden relative shadow-2xl">
               <div className="p-6 border-b border-white/5 flex justify-between items-center">
                 <h3 className="text-xl font-bold">Proof of Settlement</h3>
-                <button onClick={() => setShowReceipt(false)} className="p-2 hover:bg-white/10 rounded-lg"><XIcon className="w-5 h-5 text-white/50" /></button>
+                <button onClick={handleCloseReceipt} className="p-2 hover:bg-white/10 rounded-lg"><XIcon className="w-5 h-5 text-white/50" /></button>
               </div>
               <div className="p-8 space-y-6">
                 <div className="grid grid-cols-2 gap-6">
@@ -943,13 +994,29 @@ export default function Home() {
                     </div>
                   </div>
                 </div>
-                <button
-                  onClick={() => window.open(`https://base-sepolia-testnet-explorer.skalenodes.com:10032/tx/${receipt.payment.settlementHash}`, '_blank')}
-                  className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-400/30 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(79,70,229,0.2)]"
-                >
-                  <Globe className="w-3 h-3 text-white" />
-                  VERIFY ON-CHAIN (x402)
-                </button>
+                <div className="grid grid-cols-3 gap-3">
+                  <button
+                    onClick={() => window.open(`https://base-sepolia-testnet-explorer.skalenodes.com:10032/tx/${receipt.payment.settlementHash}`, '_blank')}
+                    className="py-3 bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-400/30 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(79,70,229,0.2)]"
+                  >
+                    <Globe className="w-3 h-3 text-white" />
+                    VERIFY
+                  </button>
+                  <button
+                    onClick={() => handleDownloadReceipt(receipt)}
+                    className="py-3 bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2"
+                  >
+                    <FileJson className="w-3 h-3 text-indigo-400" />
+                    JSON
+                  </button>
+                  <button
+                    onClick={handleCloseReceipt}
+                    className="py-3 bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2"
+                  >
+                    <RefreshCw className="w-3 h-3 text-green-400" />
+                    NEW
+                  </button>
+                </div>
               </div>
             </motion.div>
           </motion.div>

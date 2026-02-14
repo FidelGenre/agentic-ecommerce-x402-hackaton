@@ -1,7 +1,7 @@
 'use client'
 
-import { motion } from 'framer-motion'
-import { Shield, Sword, Cpu, Zap, Box } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Shield, Sword, Cpu, Zap, Box, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export interface Item {
@@ -62,9 +62,10 @@ interface ItemSelectorProps {
     items: Item[]
     selectedItem: Item | null
     onSelect: (item: Item) => void
+    onDelete?: (id: string) => void
 }
 
-export function ItemSelector({ items, selectedItem, onSelect }: ItemSelectorProps) {
+export function ItemSelector({ items, selectedItem, onSelect, onDelete }: ItemSelectorProps) {
     return (
         <div className="w-full space-y-4">
             <h3 className="text-sm font-medium text-white/50 uppercase tracking-wider">Select Target Item</h3>
@@ -87,6 +88,19 @@ export function ItemSelector({ items, selectedItem, onSelect }: ItemSelectorProp
                             {/* Selection Glow */}
                             {isSelected && (
                                 <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-transparent pointer-events-none" />
+                            )}
+
+                            {/* Delete Button */}
+                            {onDelete && (
+                                <div
+                                    onClick={(e) => {
+                                        e.stopPropagation()
+                                        onDelete(item.id)
+                                    }}
+                                    className="absolute right-2 top-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 hover:bg-red-500/20 rounded-lg text-white/20 hover:text-red-400"
+                                >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                </div>
                             )}
 
                             <div className="flex items-center gap-4 relative z-10">

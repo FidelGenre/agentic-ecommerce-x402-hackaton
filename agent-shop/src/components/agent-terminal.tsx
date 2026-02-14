@@ -71,16 +71,16 @@ export function AgentTerminal({ logs, status, targetItem }: AgentTerminalProps) 
                 <div className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar bg-black/40">
                     <AnimatePresence initial={false}>
                         {logs.length === 0 ? (
-                            <div className="h-full flex flex-col items-center justify-center opacity-20 space-y-4">
+                            <div key="empty-terminal" className="h-full flex flex-col items-center justify-center opacity-20 space-y-4">
                                 <div className="w-12 h-12 rounded-full border-2 border-dashed border-white/20 flex items-center justify-center animate-spin-slow">
                                     <Zap className="w-5 h-5" />
                                 </div>
                                 <p className="text-[10px] font-black uppercase tracking-[0.3em]">Initialize mission mandate...</p>
                             </div>
                         ) : (
-                            logs.map((log) => (
+                            logs.map((log, index) => (
                                 <motion.div
-                                    key={log.id}
+                                    key={`${log.id}-${index}`}
                                     initial={{ opacity: 0, x: -10 }}
                                     animate={{ opacity: 1, x: 0 }}
                                     className={cn(
