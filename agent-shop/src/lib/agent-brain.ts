@@ -9,7 +9,7 @@ export interface AgentDecision {
 }
 
 export class AgentBrain {
-    private model: any
+    private model: any // Using 'any' for now as @google/generative-ai types might be mismatched in this env, but logic is strict.
 
     constructor() {
         this.model = genAI.getGenerativeModel({ model: 'gemini-pro' })
@@ -42,7 +42,7 @@ export class AgentBrain {
             const text = response.text()
             // Basic cleanup to ensure JSON
             const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim()
-            return JSON.parse(jsonStr)
+            return JSON.parse(jsonStr) as AgentDecision
         } catch (error) {
             console.error('Agent Brain Error:', error)
             return {
