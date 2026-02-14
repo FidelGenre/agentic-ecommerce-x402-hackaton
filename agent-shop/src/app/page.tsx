@@ -24,16 +24,25 @@ import {
   Users,
   Trophy,
   History,
-  X,
-  Lock,
+  X as XIcon, // Aliased for compatibility
+  Lock as LockIcon, // Aliased for compatibility
   Unlock,
   CheckCircle,
   AlertTriangle,
-  Menu // Added Hamburger Menu Icon by importing 'Menu'
+  Menu,
+  User,
+  Loader2,
+  Globe,
+  Github,
+  Box,
+  CheckCircle2,
+  FileJson,
+  RefreshCw,
+  ExternalLink
 } from 'lucide-react'
-import { useAccount, useBalance, useDisconnect } from 'wagmi'
+import { useAccount, useBalance, useDisconnect, useWalletClient, useSwitchChain } from 'wagmi'
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'
-import { createWalletClient, http, formatEther, type Hex } from 'viem'
+import { createWalletClient, http, formatEther, parseEther, createPublicClient, type Hex } from 'viem'
 import { skaleBiteSandbox } from '@/config/chains'
 import Confetti from 'react-confetti'
 import { useWindowSize } from 'react-use'
@@ -41,13 +50,19 @@ import clsx from 'clsx'
 import { twMerge } from 'tailwind-merge'
 
 // Custom Hooks for Logic
-import { useAgent, AgentState } from '@/hooks/useAgent'
+import { useAgent, AgentState, AgentLog } from '@/hooks/useAgent' // Added AgentLog
 import { useMultiAgent, MultiAgentState } from '@/hooks/useMultiAgent'
+import { useVoiceInput } from '@/hooks/useVoiceInput'
 
 // Components
 import { WalletConnect } from '@/components/wallet-connect'
 import { EventSidebar } from '@/components/event-sidebar'
-import LeftSidebar from '@/components/left-sidebar' // Import LeftSidebar
+import { LeftSidebar } from '@/components/left-sidebar' // Changed to named import
+import { AgentTerminal } from '@/components/agent-terminal'
+import { ProgressTimeline } from '@/components/progress-timeline'
+import { ItemSelector, MOCK_ITEMS, Item } from '@/components/item-selector'
+import { AgentSelector, AGENT_PERSONAS, AgentPersona } from '@/components/agent-selector'
+import { NegotiationView } from '@/components/negotiation-view'
 
 // --- Types ---
 
@@ -55,26 +70,40 @@ import LeftSidebar from '@/components/left-sidebar' // Import LeftSidebar
  * Receipt - Represents a verified service agreement
  * Stored in history and displayed in the modal.
  */
-interface Receipt {
+export interface Receipt {
   id: string
-  service: string
-  price: string
-  provider: string
-  timestamp: number
-  txHash: string // SKALE Transaction Hash
-  // Google Hackathon: AP2 Audit fields
-  intentMandate: string
-  authorizationToken: string
-  agentIdentityID: string // Virtuals Protocol Identity
-  payment?: {
-    amount: string
-    token: string
-    settlementHash?: string
+  timestamp: string // ISO
+  intentMandate: {
+    type: 'purchase_order' | 'data_request'
+    target: string // The objective or product
+    maxBudget: string // In sFUEL or native
   }
+  cartMandate?: {
+    provider: string
+    item: string
+    finalPrice: string
+    currency: string
+    agentId: string
+  }
+  authorizationToken: string // AP2 Policy #42
+  agentIdentityID: string // Virtuals ACP ID
+  payment?: {
+    network: 'SKALE Nebula'
+    chainId: number
+    settlementHash: string // AP2 Terminology
+    status: 'settled'
+  }
+  logs: AgentLog[]
+  // Compatibility fields for some UI parts if needed, but try to use structure above
+  service?: string
+  price?: string
+  provider?: string
+  txHash?: string
 }
 
 // --- Constants ---
 const TREASURY_ADDRESS = '0x7e...3921' // Mock Treasury for demo
+const PROVIDER_ADDRESS = '0xc4083B1E81ceb461Ccef3FDa8A9F24F0d764B6D8' as `0x${string}` // Simulation Service Provider
 
 export default function Home() {
   const { connector, address: userAddress, chainId: accountChainId } = useAccount()
@@ -92,7 +121,31 @@ export default function Home() {
   const [agentsList, setAgentsList] = useState<AgentPersona[]>(AGENT_PERSONAS)
   const [selectedItem, setSelectedItem] = useState<Item | null>(null)
   const [selectedAgentIds, setSelectedAgentIds] = useState<string[]>([])
-  const { agents, isBattleActive, round, winner, startBattle, resetBattle } = useMultiAgent()
+
+  // New API Destructuring
+  const { state: battleState, bids: battleBids, startBattle, resetBattle } = useMultiAgent()
+
+  // Compatibility Adapters
+  const isBattleActive = battleState === 'BIDDING' || battleState === 'ADMISSION' || battleState === 'EXECUTING'
+  const round = 1 // Simplified representation
+
+  // Map 'bids' (New API) to 'agents' (Old UI Expected Format)
+  const agents = battleBids.map((bid, idx) => ({
+    id: `agent_${idx}`,
+    persona: {
+      id: `persona_${idx}`,
+      name: bid.name,
+      role: 'Autonomous Agent',
+      description: bid.strategy,
+      icon: Bot,
+      style: 'aggressive' as const
+    },
+    status: (bid.status === 'won' ? 'winner' : bid.status === 'lost' ? 'dropped' : bid.status) as any,
+    currentBid: bid.price,
+    logs: [] as any[]
+  }))
+
+  const winner = agents.find(a => a.status === 'winner') || null
 
   const { isListening, transcript, startListening } = useVoiceInput()
 
@@ -414,7 +467,8 @@ export default function Home() {
             setIsUnlockingData(false)
             // Use agentsList to support custom agents
             const selectedPersonas = agentsList.filter(p => selectedAgentIds.includes(p.id))
-            startBattle(selectedPersonas, selectedItem)
+            // New API: Just pass the objective/item name
+            startBattle(selectedItem?.name || "High Performance Compute")
           }, 1500)
         }, 1000)
       } catch (err) {

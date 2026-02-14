@@ -1,6 +1,3 @@
-```typescript
-'use client'
-
 /**
  * useMultiAgent - Battle Royale Logic Hook ⚔️
  * 
@@ -14,6 +11,8 @@
  * 
  * @module useMultiAgent
  */
+'use client'
+
 import { useState, useCallback } from 'react'
 
 export type MultiAgentState = 'IDLE' | 'ADMISSION' | 'BIDDING' | 'EXECUTING' | 'COMPLETED'
@@ -34,188 +33,93 @@ const MOCK_AGENTS = [
 ]
 
 export function useMultiAgent() {
-                    timestamp: Date.now() + 200,
-                    type: 'info',
-                    content: `Safety Check Passed.Wallet authorized.`
-                })
-            }
+    const [state, setState] = useState<MultiAgentState>('IDLE')
+    const [bids, setBids] = useState<AgentBid[]>([])
+    const [logs, setLogs] = useState<string[]>([])
 
-            return {
-                persona: p,
-                status: 'idle',
-                currentBid: 0,
-                logs: initialLogs
-            }
-        })
+    /**
+     * startBattle - Initializes the competition
+     * Spawns agents and puts them in "Admission" state.
+     */
+    const startBattle = useCallback(async (objective: string) => {
+        setState('ADMISSION')
+        setLogs(prev => [...prev, `📢 Protocol: Battle Royale initiated for "${objective}"`])
 
-        setAgents(initialAgents)
-        setIsBattleActive(true)
-        setRound(1)
-        setWinner(null)
+        // Initialize agents
+        const initialBids = MOCK_AGENTS.map(a => ({
+            name: a.name,
+            price: 0,
+            strategy: a.strategy,
+            status: 'pending' as const,
+            score: 0
+        }))
+        setBids(initialBids)
 
-        // Simulate Battle Logic
-        let currentRound = 1
-        const maxRounds = 5
-
-        // Clear any existing interval
-        if (battleInterval.current) clearInterval(battleInterval.current)
-
-        battleInterval.current = setInterval(() => {
-            setAgents(prevAgents => {
-                // Randomly select an agent to act
-                const activeAgentIndex = Math.floor(Math.random() * prevAgents.length)
-
-                return prevAgents.map((agent, index) => {
-                    if (index !== activeAgentIndex) return agent
-
-                    // Logic for the active agent
-                    const newLog: AgentLog = {
-                        id: crypto.randomUUID(),
-                        timestamp: Date.now(),
-                        type: 'thought',
-                        content: `Analyzing market... Round ${ currentRound } `
-                    }
-
-                    // Simple bidding logic simulation
-                    let bid = agent.currentBid
-                    let status: BattleAgent['status'] = agent.status
-
-                    if (currentRound <= maxRounds) {
-                        const randomAction = Math.random()
-
-                        // Trust & Safety: Lower drop chance for demo reliability
-                        if (currentRound >= 4 && Math.random() > 0.95 && agent.status !== 'dropped') {
-                            newLog.type = 'error'
-                            newLog.content = `🛑 Safety Guardrail: Budget limit nearing.Halting current path.`
-                            status = 'dropped'
-                            // ... stay dropped ...
-                        } else if (randomAction > 0.1) { // 90% chance to act
-                            // Place a bid
-                            const base = item.basePrice
-                            // Random bid around base price, decreasing slightly each round (reverse auction)
-                            const variance = (Math.random() * 0.1) - 0.05 // +/- 5%
-                            const roundMultiplier = 1 - (currentRound * 0.04) // Price drops faster for dramatic effect
-
-                            // Ensure bid is never 0 and is around base price
-                            const newBid = Math.floor(base * roundMultiplier * (1 + variance) * 100) / 100
-                            bid = newBid > 0 ? newBid : base
-
-                            // Conversational Messages based on Persona
-                            const messages = {
-                                'shark-buy': [
-                                    `I'll shatter the competition with a bid of ${bid} sFUEL! Witness the power of aggressive negotiation. 💥`,
-    `Too slow! I'm moving the needle to ${bid} sFUEL before anyone else can blink. 🦈`,
-    `This ${item.name} belongs in my portfolio. Crushing the market at ${bid} sFUEL. 🔥`
-                                ],
-'sniper-bot': [
-    `Precision is my game. Calculating the optimal threshold at ${bid} sFUEL. 🎯`,
-    `I've identified the perfect entry point. Bidding ${bid} sFUEL with surgical accuracy. 💎`,
-    `Unveiling the true underlying value of ${item.name}. My offer is ${bid} sFUEL. 🦾`
-],
-    'whale-cap': [
-        `The grid belongs to the bold. Capitalizing on this opportunity with ${bid} sFUEL. 🐋`,
-        `Liquidity optimized. I'm taking the lead with a strategic ${bid} sFUEL play. 🚀`,
-        `Market dominance established. My definitive offer stands at ${bid} sFUEL. 📈`
-    ]
-                            }
-
-const personaMessages = messages[agent.persona.id as keyof typeof messages] || [
-    `Strategic bid placed at ${bid} sFUEL. Monitoring grid response...`
-]
-
-newLog.type = 'action'
-newLog.content = personaMessages[Math.floor(Math.random() * personaMessages.length)]
-status = 'bidding'
-                        } else {
-    newLog.content = "Observing competitor patterns..."
-    status = 'holding'
-}
-                    } else {
-    // End of battle
-    status = 'idle'
-}
-
-return {
-    ...agent,
-    currentBid: bid,
-    status: status,
-    logs: [...agent.logs, newLog]
-}
-                })
-            })
-
-if (currentRound >= maxRounds) {
-    if (battleInterval.current) clearInterval(battleInterval.current)
-    setIsBattleActive(false)
-
-    // REVEAL PHASE
-    setAgents(prev => prev.map(a => ({
-        ...a,
-        logs: [...a.logs, {
-            id: crypto.randomUUID(),
-            timestamp: Date.now(),
-            type: 'action',
-            content: `🔓 Decrypting BITE Offer...`
-        }]
-    })))
-
-    setTimeout(() => {
-        finalizeWinner()
-    }, 1500)
-}
-
-// Increment round occasionally/visually
-if (Math.random() > 0.8) {
-    currentRound++
-    setRound(r => r + 1)
-}
-
-        }, 2000) // Action every 2 seconds
-
+        // Artificial delay for UI drama
+        await new Promise(r => setTimeout(r, 1500))
+        setState('BIDDING')
+        simulateBidding(initialBids)
     }, [])
 
-const finalizeWinner = useCallback(() => {
-    setAgents(prev => {
-        const highestBid = Math.max(...prev.map(a => a.currentBid))
+    /**
+     * simulateBidding - Core Simulation Loop
+     * Agents "think" and adjust their bids dynamically.
+     */
+    const simulateBidding = async (currentBids: AgentBid[]) => {
+        // Round 1: Initial Analysis
+        setLogs(prev => [...prev, `🤖 Agents analyzing market conditions...`])
+        await new Promise(r => setTimeout(r, 2000))
 
-        // Side effect: Find winner to set state (might trigger re-render, but safe in this Effect-like callback)
-        const winnerAgent = prev.find(a => a.currentBid === highestBid && a.currentBid > 0)
-        if (winnerAgent) setWinner(winnerAgent)
+        const round1Bids = currentBids.map(b => ({
+            ...b,
+            status: 'bidding' as const,
+            price: (Math.random() * 0.0005) + 0.0001 // Random initial bid
+        }))
+        setBids(round1Bids)
 
-        return prev.map(a => {
-            // Fix: Only mark the specific selected winnerAgent as 'winner', not just anyone with the matching bid
-            const isWinner = winnerAgent ? a.persona.id === winnerAgent.persona.id : false
-            const newStatus: BattleAgent['status'] = isWinner ? 'winner' : 'dropped'
+        // Round 2: Final Offer
+        await new Promise(r => setTimeout(r, 2000))
+        const finalBids = round1Bids.map(b => ({
+            ...b,
+            status: 'submitted' as const,
+            price: Math.max(0.0001, b.price * (0.9 + Math.random() * 0.2)), // Variation
+            score: Math.random() * 100
+        }))
+        setBids(finalBids)
 
-            // Add final log
-            return {
-                ...a,
-                status: newStatus,
-                logs: [...a.logs, {
-                    id: crypto.randomUUID(),
-                    timestamp: Date.now(),
-                    type: 'info',
-                    content: `🔓 Offer Revealed: ${a.currentBid > 0 ? a.currentBid.toFixed(2) : highestBid.toFixed(2)} sFUEL`
-                }]
-            }
-        })
-    })
-}, [])
+        finalizeWinner(finalBids)
+    }
 
-const resetBattle = useCallback(() => {
-    if (battleInterval.current) clearInterval(battleInterval.current)
-    setAgents([])
-    setIsBattleActive(false)
-    setRound(0)
-    setWinner(null)
-}, [])
+    /**
+     * finalizeWinner - Determines the outcome
+     * Selects the lowest price agent as the winner.
+     */
+    const finalizeWinner = (finalBids: AgentBid[]) => {
+        // Find lowest price
+        const sorted = [...finalBids].sort((a, b) => a.price - b.price)
+        const winner = sorted[0]
 
-return {
-    agents,
-    isBattleActive,
-    round,
-    winner,
-    startBattle,
-    resetBattle
-}
+        const resultBids = finalBids.map(b => ({
+            ...b,
+            status: (b.name === winner.name ? 'won' : 'lost') as AgentBid['status'] // Type cast for strictness
+        }))
+
+        setBids(resultBids)
+        setState('COMPLETED')
+        setLogs(prev => [...prev, `🏆 Winner: ${winner.name} with bid ${winner.price.toFixed(5)} sFUEL`])
+    }
+
+    const resetBattle = useCallback(() => {
+        setState('IDLE')
+        setBids([])
+        setLogs([])
+    }, [])
+
+    return {
+        state,
+        bids,
+        logs,
+        startBattle,
+        resetBattle
+    }
 }
