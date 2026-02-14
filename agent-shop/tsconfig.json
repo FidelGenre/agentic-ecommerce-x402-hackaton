@@ -38,9 +38,9 @@
   ],
   "exclude": [
     "node_modules",
-    "lib",
-    "contracts",
-    "broadcast",
-    "cache"
+    "./lib",
+    "./contracts",
+    "./broadcast",
+    "./cache"
   ]
 }
