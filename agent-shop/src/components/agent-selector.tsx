@@ -65,46 +65,50 @@ export function AgentSelector({ selectedAgents, onToggle, onSelectAll, mode = 'm
                     </button>
                 )}
             </div>
-            <div className="grid grid-cols-1 gap-3">
+            <div className="space-y-2">
                 {AGENT_PERSONAS.map((agent) => {
                     const isSelected = selectedAgents.includes(agent.id)
                     return (
                         <motion.button
                             key={agent.id}
                             onClick={() => onToggle(agent.id)}
-                            whileHover={{ scale: 1.01 }}
-                            whileTap={{ scale: 0.99 }}
+                            whileHover={{ x: 4 }}
+                            whileTap={{ scale: 0.98 }}
                             className={cn(
-                                "relative p-3 rounded-xl text-left border transition-all duration-300 flex items-center gap-4",
+                                "relative w-full p-3 rounded-2xl text-left border transition-all duration-300 group overflow-hidden",
                                 isSelected
-                                    ? "bg-white/10 border-white/30"
-                                    : "bg-white/5 border-white/5 opacity-70 hover:opacity-100"
+                                    ? "bg-purple-500/10 border-purple-500/30 shadow-[0_8px_20px_rgba(168,85,247,0.1)]"
+                                    : "bg-white/[0.02] border-white/5 hover:bg-white/[0.05] hover:border-white/10"
                             )}
                         >
-                            <div className={cn(
-                                "p-2 rounded-lg",
-                                agent.style === 'aggressive' ? "bg-red-500/20 text-red-400" :
-                                    agent.style === 'analytical' ? "bg-cyan-500/20 text-cyan-400" :
-                                        "bg-green-500/20 text-green-400"
-                            )}>
-                                <agent.icon className="w-5 h-5" />
-                            </div>
-
-                            <div className="flex-1">
-                                <div className="flex justify-between items-center">
-                                    <span className="font-bold text-white text-sm">{agent.name}</span>
-                                    {isSelected && <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full text-white">Active</span>}
-                                </div>
-                                <p className="text-xs text-white/40">{agent.description}</p>
-                            </div>
-
+                            {/* Selection Glow */}
                             {isSelected && (
-                                <motion.div
-                                    layoutId={`outline-${agent.id}`}
-                                    className="absolute inset-0 border border-cyan-500/30 rounded-xl"
-                                    initial={false}
-                                />
+                                <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-transparent pointer-events-none" />
                             )}
+
+                            <div className="flex items-center gap-4 relative z-10">
+                                <div className={cn(
+                                    "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border transition-transform group-hover:scale-110",
+                                    agent.style === 'aggressive' ? "bg-red-500/10 border-red-500/20 text-red-400" :
+                                        agent.style === 'analytical' ? "bg-cyan-500/10 border-cyan-500/20 text-cyan-400" :
+                                            "bg-purple-500/10 border-purple-500/20 text-purple-400"
+                                )}>
+                                    <agent.icon className="w-5 h-5" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex justify-between items-center mb-0.5">
+                                        <span className="text-xs font-black text-white uppercase tracking-tight truncate">{agent.name}</span>
+                                        {isSelected && (
+                                            <div className="px-1.5 py-0.5 rounded-md bg-purple-500/20 text-purple-400 text-[8px] font-black uppercase tracking-widest border border-purple-500/20">
+                                                Active
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[9px] font-black text-white/20 uppercase tracking-widest truncate">{agent.role}</span>
+                                    </div>
+                                </div>
+                            </div>
                         </motion.button>
                     )
                 })}

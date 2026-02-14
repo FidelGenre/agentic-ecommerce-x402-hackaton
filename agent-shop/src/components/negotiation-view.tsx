@@ -1,12 +1,11 @@
 'use client'
 
 import { motion, AnimatePresence } from 'framer-motion'
-// import { Card } from '@/components/ui/card' // Removed unused import
 import { AgentLog } from '@/hooks/useAgent'
 import { cn } from '@/lib/utils'
 import { AgentPersona } from './agent-selector'
 import { Item } from './item-selector'
-import { Zap, Trophy, TrendingDown, Clock, Lock as LockIcon, Shield } from 'lucide-react'
+import { Zap, Trophy, TrendingDown, Clock, Lock as LockIcon, Shield, Box, Globe, Activity, Users } from 'lucide-react'
 
 // Define a type for an agent's runtime state in the battle
 export interface BattleAgent {
@@ -28,122 +27,155 @@ export function NegotiationView({ agents, targetItem, round }: NegotiationViewPr
     const leader = agents.find(a => a.currentBid === bestBid)
 
     return (
-        <div className="w-full flex flex-col gap-6">
-            {/* Battle Header */}
-            <div className="flex justify-between items-center bg-white/5 p-4 rounded-xl border border-white/10">
-                <div className="flex items-center gap-4">
-                    <div className="p-2 bg-purple-500/20 rounded-lg text-purple-400">
-                        <targetItem.icon className="w-6 h-6" />
+        <div className="w-full flex flex-col h-full">
+            {/* Item Header (Agents OS Style) */}
+            <div className="mb-8 p-8 rounded-[2.5rem] bg-white/[0.02] border border-white/5 flex items-start justify-between group hover:bg-white/[0.04] transition-all">
+                <div className="flex items-start gap-8">
+                    <div className="w-20 h-20 rounded-3xl bg-cyan-500/10 flex items-center justify-center border border-cyan-500/20 group-hover:scale-105 transition-transform shadow-[0_0_30px_rgba(34,211,238,0.1)]">
+                        <targetItem.icon className="w-10 h-10 text-cyan-400" />
                     </div>
-                    <h2 className="text-lg font-bold text-white mb-1">{targetItem.name}</h2>
-                    <div className="flex flex-wrap items-center gap-3 text-xs text-white/50">
-                        <div className="flex items-center gap-1 text-cyan-300">
-                            <Shield className="w-3 h-3" />
-                            {targetItem.provider}
+                    <div className="pt-1">
+                        <div className="flex items-center gap-4 mb-2">
+                            <h2 className="text-3xl font-black uppercase tracking-tighter text-white">{targetItem.name}</h2>
+                            <span className="px-3 py-1 rounded-lg bg-cyan-500/20 text-cyan-400 text-[10px] font-black uppercase tracking-widest border border-cyan-500/20">
+                                {targetItem.rarity || 'RARE'}
+                            </span>
                         </div>
-                        <div className="flex items-center gap-1 text-yellow-400">
-                            <span>★</span> {targetItem.trustScore}
-                        </div>
-                        <span className="text-white/20">|</span>
-                        <span className="text-cyan-400">Base: {targetItem.basePrice} SKL</span>
-                        <span className="text-white/20">|</span>
-                        <div className="flex items-center gap-1 text-red-400/80 font-mono" title="Safety Guardrail: Max Spend Cap">
-                            <TrendingDown className="w-3 h-3 rotate-180" />
-                            <span>Cap: {Math.floor(targetItem.basePrice * 1.5)}</span>
-                        </div>
-                        <span className="text-white/20">|</span>
-                        <div className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            <span>Round {round} / 5</span>
+                        <div className="flex items-center gap-6 text-white/20 text-[10px] font-black uppercase tracking-[0.2em]">
+                            <span className="flex items-center gap-2"><Globe className="w-3.5 h-3.5" /> SKALE NEBULA</span>
+                            <span className="flex items-center gap-2"><Shield className="w-3.5 h-3.5" /> AGENT MESH</span>
+                            <span className="flex items-center gap-2 text-yellow-500/50">★ {targetItem.trustScore} TRUST SCORE</span>
                         </div>
                     </div>
                 </div>
 
-                <div className="text-right">
-                    <div className="text-xs text-white/50 uppercase tracking-wider mb-1">Current Best Offer</div>
-                    <div className="text-2xl font-bold text-green-400 flex items-center justify-end gap-2">
-                        {bestBid > 0 ? `${bestBid} SKL` : '---'}
-                        <TrendingDown className="w-5 h-5" />
+                <div className="text-right pt-1">
+                    <div className="text-white/20 text-[10px] font-black uppercase tracking-widest mb-2 px-3 py-1 bg-white/5 rounded-full inline-block">
+                        Battle Stage: Round {round}/5
                     </div>
-                    {leader && <div className="text-xs text-white/40">Leader: {leader.persona.name}</div>}
+                    <div className="text-3xl font-black text-green-400 font-mono tracking-tighter">
+                        {bestBid > 0 ? bestBid.toFixed(2) : targetItem.basePrice.toFixed(2)} <span className="text-sm">sFUEL</span>
+                    </div>
+                    <div className="text-[10px] font-black text-white/40 uppercase tracking-widest mt-1">
+                        {leader ? `Leading: ${leader.persona.name}` : `Min. Bid: ${targetItem.basePrice}`}
+                    </div>
                 </div>
             </div>
 
-            {/* Agents Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {agents.map((agent) => (
-                    <motion.div
-                        key={agent.persona.id}
-                        layout
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className={cn(
-                            "relative flex flex-col h-[300px] rounded-xl border overflow-hidden transition-colors",
-                            agent.status === 'winner' ? "bg-green-500/10 border-green-500/50" :
-                                agent.status === 'dropped' ? "bg-red-500/5 border-red-500/20 opacity-60" :
-                                    "bg-black/40 border-white/10"
-                        )}
-                    >
-                        {/* Agent Header */}
-                        <div className="p-3 border-b border-white/5 flex justify-between items-center bg-white/5">
-                            <div className="flex items-center gap-2">
-                                <agent.persona.icon className="w-4 h-4 text-white/70" />
-                                <span className="font-bold text-sm text-white/90">{agent.persona.name}</span>
-                            </div>
-                            <div className={cn(
-                                "px-2 py-0.5 rounded text-[10px] font-mono",
-                                agent.status === 'bidding' ? "bg-cyan-500/20 text-cyan-400 animate-pulse" :
-                                    agent.status === 'winner' ? "bg-green-500/20 text-green-400" :
-                                        "bg-white/10 text-white/40"
-                            )}>
-                                {agent.status.toUpperCase()}
-                            </div>
+            {/* Main Battle Area */}
+            <div className="flex-1 flex gap-6 min-h-0 min-w-0">
+                {/* Unified Battle Feed (Chat Style) */}
+                <div className="flex-1 flex flex-col min-w-0 bg-white/[0.02] border border-white/5 rounded-[2.5rem] overflow-hidden">
+                    <div className="p-4 border-b border-white/5 flex items-center justify-between bg-white/[0.01]">
+                        <div className="flex items-center gap-3">
+                            <Activity className="w-4 h-4 text-indigo-400" />
+                            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Real-time Negotiation Feed</h3>
                         </div>
-
-                        {/* Logs Area (Terminal Style) */}
-                        <div className="flex-1 p-3 overflow-y-auto font-mono text-xs space-y-2 custom-scrollbar bg-black/20">
-                            {agent.logs.map((log) => (
-                                <div key={log.id} className={cn(
-                                    "opacity-80 break-words",
-                                    log.type === 'thought' ? "text-purple-300 italic" :
-                                        log.type === 'action' ? "text-cyan-300" :
-                                            log.type === 'error' ? "text-red-400" :
-                                                "text-white/60"
-                                )}>
-                                    <span className="opacity-30 mr-2">{new Date(log.timestamp).toLocaleTimeString([], { hour12: false, second: '2-digit', minute: '2-digit' })}</span>
-                                    {log.content}
-                                </div>
-                            ))}
+                        <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                            <span className="text-[8px] font-black text-green-400 uppercase tracking-widest">Live Engine</span>
                         </div>
+                    </div>
 
-                        {/* Current Bid Footer */}
-                        <div className="p-3 border-t border-white/5 bg-white/5 flex justify-between items-center">
-                            <span className="text-xs text-white/40">Latest Bid</span>
-                            <span className="font-bold font-mono text-white/90">
-                                {agent.status === 'winner' || agent.status === 'dropped' ? (
-                                    agent.currentBid > 0 ? `${agent.currentBid} SKL` : '---'
-                                ) : (
-                                    <div className="flex flex-col items-end gap-1">
-                                        <div className="flex items-center gap-2 text-cyan-400 text-xs uppercase tracking-wider">
-                                            <LockIcon className="w-3 h-3" />
-                                            Encrypted
+                    <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6 custom-scrollbar">
+                        <AnimatePresence mode="popLayout">
+                            {agents
+                                .flatMap(agent => agent.logs.map(log => ({ ...log, agent })))
+                                .sort((a, b) => a.timestamp - b.timestamp)
+                                .map((log) => (
+                                    <motion.div
+                                        key={log.id}
+                                        initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                        className={cn(
+                                            "flex flex-col gap-2 max-w-[85%]",
+                                            log.agent.persona.id === agents[0].persona.id ? "self-start" : "self-end items-end"
+                                        )}
+                                    >
+                                        <div className="flex items-center gap-2 px-1">
+                                            <div className="w-5 h-5 rounded-lg bg-white/5 flex items-center justify-center border border-white/10">
+                                                <log.agent.persona.icon className="w-3 h-3 text-white/60" />
+                                            </div>
+                                            <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">{log.agent.persona.name}</span>
                                         </div>
-                                        <div className="text-[8px] text-white/30 font-mono uppercase tracking-tighter">
-                                            Skale Consensus Level (Istanbul EVM)
+
+                                        <div className={cn(
+                                            "p-4 rounded-2xl border text-xs relative",
+                                            log.type === 'thought' ? "bg-indigo-500/5 border-indigo-500/10 text-indigo-300 italic opacity-60" :
+                                                log.type === 'action' ? (
+                                                    log.agent.persona.id === agents[0].persona.id
+                                                        ? "bg-indigo-500/10 border-indigo-500/20 text-white rounded-tl-none shadow-[0_4px_15px_rgba(79,70,229,0.1)]"
+                                                        : "bg-cyan-500/10 border-cyan-500/20 text-white rounded-tr-none shadow-[0_4px_15px_rgba(34,211,238,0.1)]"
+                                                ) :
+                                                    log.type === 'error' ? "bg-red-500/5 border-red-500/10 text-red-400" :
+                                                        "bg-white/5 border-white/5 text-white/40"
+                                        )}>
+                                            {log.content}
+
+                                            {log.type === 'action' && log.content.includes('FUEL') && (
+                                                <div className="mt-3 pt-3 border-t border-white/5 flex items-center gap-2">
+                                                    <span className="text-[8px] font-black uppercase text-white/20 tracking-widest">Intent Bid</span>
+                                                    <span className="px-2 py-0.5 rounded bg-green-500/20 text-green-400 text-[9px] font-black font-mono tracking-tighter border border-green-500/20">
+                                                        {log.content.match(/\d+\.\d+/) ? log.content.match(/\d+\.\d+/)?.[0] : log.agent.currentBid.toFixed(2)} sFUEL
+                                                    </span>
+                                                </div>
+                                            )}
                                         </div>
+                                    </motion.div>
+                                ))}
+                        </AnimatePresence>
+                        {/* Auto-scroll anchor */}
+                        <div key="anchor" ref={(el) => el?.scrollIntoView({ behavior: 'smooth' })} />
+                    </div>
+                </div>
+
+                {/* Vertical Agent Grid (Right Side) */}
+                <div className="w-64 flex flex-col gap-4 overflow-y-auto custom-scrollbar pr-2">
+                    <h3 className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 px-2">Negotiators</h3>
+                    {agents.map((agent) => (
+                        <motion.div
+                            key={agent.persona.id}
+                            layout
+                            className={cn(
+                                "p-4 rounded-2xl border transition-all relative overflow-hidden shrink-0",
+                                agent.status === 'winner' ? "bg-green-500/10 border-green-500/30 shadow-[0_0_20px_rgba(34,197,94,0.1)]" :
+                                    agent.status === 'dropped' ? "bg-red-500/[0.02] border-red-500/10 grayscale opacity-40" :
+                                        "bg-white/[0.02] border-white/5"
+                            )}
+                        >
+                            <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center border border-white/10">
+                                        <agent.persona.icon className="w-3 h-3 text-white/60" />
                                     </div>
-                                )}
-                            </span>
-                        </div>
-
-                        {/* Winner Badge */}
-                        {agent.status === 'winner' && (
-                            <div className="absolute top-2 right-2">
-                                <Trophy className="w-6 h-6 text-yellow-500 fill-current drop-shadow-lg" />
+                                    <span className="font-black text-[10px] text-white uppercase tracking-tighter">{agent.persona.name}</span>
+                                </div>
+                                <div className={cn(
+                                    "px-1.5 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest",
+                                    agent.status === 'bidding' ? "bg-cyan-500 text-black" :
+                                        agent.status === 'winner' ? "bg-green-500 text-black" :
+                                            "bg-white/10 text-white/40"
+                                )}>
+                                    {agent.status}
+                                </div>
                             </div>
-                        )}
-                    </motion.div>
-                ))}
+
+                            <div className="flex justify-between items-end">
+                                <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Current Offer</span>
+                                <span className={cn(
+                                    "font-black text-sm font-mono tracking-tighter",
+                                    agent.currentBid > 0 ? "text-white" : "text-white/20"
+                                )}>
+                                    {agent.currentBid > 0 ? agent.currentBid.toFixed(2) : '---'}
+                                </span>
+                            </div>
+
+                            {agent.status === 'winner' && (
+                                <Trophy className="absolute -right-1 -bottom-1 w-12 h-12 text-yellow-500/10 -rotate-12" />
+                            )}
+                        </motion.div>
+                    ))}
+                </div>
             </div>
         </div>
     )

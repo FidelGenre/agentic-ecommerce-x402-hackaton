@@ -121,16 +121,40 @@ export function useMultiAgent() {
                         } else if (randomAction > 0.3) {
                             // Place a bid
                             const base = item.basePrice
-                            // Random bid around base price, increasing slightly each round
-                            const variance = (Math.random() * 0.2) - 0.1 // +/- 10%
-                            const roundMultiplier = 1 - (currentRound * 0.05) // Price drops over rounds (reverse auction)
+                            // Random bid around base price, decreasing slightly each round (reverse auction)
+                            const variance = (Math.random() * 0.1) - 0.05 // +/- 5%
+                            const roundMultiplier = 1 - (currentRound * 0.03) // Price drops over rounds
 
-                            bid = Math.floor(base * roundMultiplier * (1 + variance))
+                            bid = Math.floor(base * roundMultiplier * (1 + variance) * 100) / 100
+
+                            // Conversational Messages based on Persona
+                            const messages = {
+                                'shark-buy': [
+                                    `I'll shatter the competition with a bid of ${bid} sFUEL! Witness the power of aggressive negotiation. 💥`,
+                                    `Too slow! I'm moving the needle to ${bid} sFUEL before anyone else can blink. 🦈`,
+                                    `This ${item.name} belongs in my portfolio. Crushing the market at ${bid} sFUEL. 🔥`
+                                ],
+                                'sniper-bot': [
+                                    `Precision is my game. Calculating the optimal threshold at ${bid} sFUEL. 🎯`,
+                                    `I've identified the perfect entry point. Bidding ${bid} sFUEL with surgical accuracy. 💎`,
+                                    `Unveiling the true underlying value of ${item.name}. My offer is ${bid} sFUEL. 🦾`
+                                ],
+                                'whale-cap': [
+                                    `The grid belongs to the bold. Capitalizing on this opportunity with ${bid} sFUEL. 🐋`,
+                                    `Liquidity optimized. I'm taking the lead with a strategic ${bid} sFUEL play. 🚀`,
+                                    `Market dominance established. My definitive offer stands at ${bid} sFUEL. 📈`
+                                ]
+                            }
+
+                            const personaMessages = messages[agent.persona.id as keyof typeof messages] || [
+                                `Strategic bid placed at ${bid} sFUEL. Monitoring grid response...`
+                            ]
+
                             newLog.type = 'action'
-                            newLog.content = `🔒 Encrypted BITE Offer`
+                            newLog.content = personaMessages[Math.floor(Math.random() * personaMessages.length)]
                             status = 'bidding'
                         } else {
-                            newLog.content = "Holding position..."
+                            newLog.content = "Holding position. Observing competitor patterns..."
                             status = 'holding'
                         }
                     } else {

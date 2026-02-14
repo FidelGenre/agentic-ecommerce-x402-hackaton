@@ -45,7 +45,7 @@ export function useAgent() {
 
     // Wagmi Hooks for User Signing
     const { address, isConnected, chainId: accountChainId } = useAccount()
-    const { switchChain } = useSwitchChain()
+    const { switchChain, switchChainAsync } = useSwitchChain()
     const { data: walletClient } = useWalletClient({ chainId: Number(CHAIN_ID) })
     const publicClient = usePublicClient({ chainId: Number(CHAIN_ID) })
 
@@ -99,6 +99,7 @@ export function useAgent() {
         // 1. Check Connection
         if (!isConnected) {
             addLog('error', '⚠️ Wallet not connected. Please click "Connect Wallet" top right.')
+            setState('IDLE')
             return
         }
 
@@ -106,12 +107,12 @@ export function useAgent() {
         if (accountChainId !== Number(CHAIN_ID)) {
             addLog('thought', `⚠️ Wrong Network detected (${accountChainId}). Requesting switch to SKALE BITE V2...`)
             try {
-                switchChain({ chainId: Number(CHAIN_ID) })
-                addLog('action', 'Please approve the network switch in your wallet, then click "Deploy Agent" again.')
-                return
+                await switchChainAsync({ chainId: Number(CHAIN_ID) })
+                addLog('info', '✅ Network switched successfully.')
             } catch (error: any) {
                 console.error('Failed to switch network:', error)
-                addLog('error', `❌ Failed to switch network: ${error.message || 'Unknown error'}`)
+                addLog('error', `❌ Failed to switch network: ${error.message || 'Unknown error'}. Please switch manually in your wallet.`)
+                setState('IDLE')
                 return
             }
         }
@@ -191,7 +192,8 @@ export function useAgent() {
                             to: providerAccount.address,
                             value: parseEther('0.005'),
                             gasPrice: currentGasPrice,
-                            chain: skaleBiteSandbox
+                            chain: skaleBiteSandbox,
+                            gas: 12000000n // SKALE Optimization
                         })
                         await publicClient.waitForTransactionReceipt({ hash: fuelHash })
                         addLog('tx', `✅ Provider Fueled`, { hash: fuelHash })
@@ -219,7 +221,8 @@ export function useAgent() {
                                 50  // Rating (uint8, 50 = 5.0)
                             ],
                             gasPrice: currentGasPrice,
-                            chain: skaleBiteSandbox
+                            chain: skaleBiteSandbox,
+                            gas: 12000000n // SKALE Optimization
                         })
                         addLog('tx', `✅ Provider Agent Registered on-chain`, { hash: regHash })
                         await publicClient.waitForTransactionReceipt({ hash: regHash })
@@ -237,29 +240,18 @@ export function useAgent() {
 
             // ━━━━ Phase 4: User Creates Request (Real User Sign) ━━━━
 
-            // 🚨 FORCE NETWORK SWITCH (Aggressive User Request)
+            // 🚨 ENSURE NETWORK (Standardized)
             try {
-                addLog('info', `🔌 Ensuring connection to SKALE BITE V2 Sandbox...`)
-                await window.ethereum.request({
-                    method: 'wallet_addEthereumChain',
-                    params: [{
-                        chainId: '0x62e60eb', // 103698795
-                        chainName: 'SKALE BITE V2 Sandbox',
-                        nativeCurrency: { name: 'sFUEL', symbol: 'sFUEL', decimals: 18 },
-                        rpcUrls: ['https://base-sepolia-testnet.skalenodes.com/v1/bite-v2-sandbox'],
-                        blockExplorerUrls: ['https://base-sepolia-testnet-explorer.skalenodes.com:10032']
-                    }]
-                })
-                await window.ethereum.request({
-                    method: 'wallet_switchEthereumChain',
-                    params: [{ chainId: '0x62e60eb' }],
-                })
-                addLog('info', `✅ Network check passed.`)
+                if (accountChainId !== Number(CHAIN_ID)) {
+                    await switchChainAsync({ chainId: Number(CHAIN_ID) })
+                    addLog('info', `✅ Network check passed.`)
+                }
             } catch (e) {
                 console.warn("Network switch attempt failed", e)
             }
 
             addLog('action', `📝 [USER ACTION REQUIRED] Please sign 'createRequest' transaction...`)
+            await new Promise(r => setTimeout(r, 500)) // Give UI time to update & Metamask time to breathe
 
             // Get the latest service ID to link to
             let nextSvcId = 0
@@ -284,7 +276,8 @@ export function useAgent() {
                         args: [BigInt(nextSvcId >= 0 ? nextSvcId : 0), objective],
                         value: parseEther(decision.maxBudget),
                         gasPrice: currentGasPrice,
-                        chain: skaleBiteSandbox
+                        chain: skaleBiteSandbox,
+                        gas: 12000000n // SKALE Optimization
                     })
                     const reqReceipt = await publicClient.waitForTransactionReceipt({ hash: reqHash })
                     addLog('tx', `✅ Request Created! Block #${reqReceipt.blockNumber}`, { hash: reqHash })
@@ -337,6 +330,8 @@ export function useAgent() {
             // BITE phase 1 (hiding information). Real BITE SDK calls can be swapped here easily.
 
             if (userBalance > parseEther('0.006')) {
+                // SKALE Optimization: Delay to prevent nonce collision
+                await new Promise(r => setTimeout(r, 2000))
                 try {
                     const commitHash = await providerClient.writeContract({
                         address: CONTRACT as Hex,
@@ -344,7 +339,8 @@ export function useAgent() {
                         functionName: 'submitEncryptedOffer',
                         args: [BigInt(requestId), offerHash],
                         gasPrice: currentGasPrice,
-                        chain: skaleBiteSandbox
+                        chain: skaleBiteSandbox,
+                        gas: 12000000n // SKALE Optimization
                     })
                     addLog('tx', `🔒 Encrypted Offer Submitted on-chain.`, { hash: commitHash })
                     await publicClient.waitForTransactionReceipt({ hash: commitHash })
@@ -360,6 +356,8 @@ export function useAgent() {
             // ━━━━ Phase 6: Provider Reveals (Real Burner Sign) ━━━━
             addLog('action', '⚡ [BITE] Revealing offer parameters...')
             if (userBalance > parseEther('0.006')) {
+                // SKALE Optimization: Delay to prevent nonce collision
+                await new Promise(r => setTimeout(r, 2000))
                 try {
                     const revealHash = await providerClient.writeContract({
                         address: CONTRACT as Hex,
@@ -367,7 +365,8 @@ export function useAgent() {
                         functionName: 'revealOffer',
                         args: [BigInt(requestId), offerPrice, nonce],
                         gasPrice: currentGasPrice,
-                        chain: skaleBiteSandbox
+                        chain: skaleBiteSandbox,
+                        gas: 12000000n // SKALE Optimization
                     })
                     addLog('tx', `🔓 Offer Revealed: ${decision.maxBudget} sFUEL. Validated on-chain.`, { hash: revealHash })
                     await publicClient.waitForTransactionReceipt({ hash: revealHash })
@@ -384,13 +383,16 @@ export function useAgent() {
             setState('TRANSACTING')
             addLog('action', `💳 [USER ACTION REQUIRED] Please sign 'settlePayment' via x402...`)
 
-            // 🚨 FORCE NETWORK SWITCH AGAIN (Just in case)
+            // 🚨 ENSURE NETWORK (Standardized)
             try {
-                await window.ethereum.request({
-                    method: 'wallet_switchEthereumChain',
-                    params: [{ chainId: '0x62e60eb' }],
-                })
-            } catch { }
+                if (accountChainId !== Number(CHAIN_ID)) {
+                    await switchChainAsync({ chainId: Number(CHAIN_ID) })
+                }
+            } catch (e) {
+                console.warn("Network switch failed in Phase 7", e)
+            }
+
+            await new Promise(r => setTimeout(r, 500)) // Breathe
 
             let settleSuccess = false
             if (userBalance > parseEther('0.001')) {
@@ -401,7 +403,8 @@ export function useAgent() {
                         functionName: 'settlePayment',
                         args: [BigInt(requestId), providerAccount.address],
                         gasPrice: currentGasPrice,
-                        chain: skaleBiteSandbox
+                        chain: skaleBiteSandbox,
+                        gas: 12000000n // SKALE Optimization
                     })
 
                     addLog('tx', `⏳ Settle submitted: ${settleHash.slice(0, 10)}...`)

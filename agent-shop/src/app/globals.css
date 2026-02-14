@@ -119,17 +119,23 @@ body {
   }
 }
 
-@keyframes gradient-shift {
+@keyframes scan {
   0% {
-    background-position: 0% 50%;
+    transform: translateY(0);
+    opacity: 0;
   }
 
-  50% {
-    background-position: 100% 50%;
+  10% {
+    opacity: 1;
+  }
+
+  90% {
+    opacity: 1;
   }
 
   100% {
-    background-position: 0% 50%;
+    transform: translateY(200px);
+    opacity: 0;
   }
 }
 
@@ -144,6 +150,10 @@ body {
 .animate-gradient {
   background-size: 200% 200%;
   animation: gradient-shift 4s ease infinite;
+}
+
+.animate-scan {
+  animation: scan 4s linear infinite;
 }
 
 .shimmer-text {
