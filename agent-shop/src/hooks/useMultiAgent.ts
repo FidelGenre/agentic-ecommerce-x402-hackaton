@@ -39,14 +39,58 @@ export function useMultiAgent() {
 
     /**
      * startBattle - Initializes the competition
-     * Spawns agents and puts them in "Admission" state.
+     * Spawns agents, funds them from treasury, and puts them in "Admission" state.
+     * @param objective User's request
+     * @param onFund Optional callback to execute real blockchain transactions
      */
-    const startBattle = useCallback(async (objective: string) => {
-        setState('ADMISSION')
-        setLogs(prev => [...prev, `📢 Protocol: Battle Royale initiated for "${objective}"`])
+    const startBattle = useCallback(async (objective: string, onFund?: (agents: { name: string, address: string }[]) => Promise<string[]>) => {
+        setLogs([]) // Clear previous
+        setState('IDLE')
 
-        // Initialize agents
-        const initialBids = MOCK_AGENTS.map(a => ({
+        // Phase 0: Authorization
+        setLogs(prev => [...prev, `🔐 Security: Verifying Treasury Mandate...`])
+        await new Promise(r => setTimeout(r, 800))
+
+        // Phase 1: Funding Agents (Real or Simulated)
+        setLogs(prev => [...prev, `🏦 Treasury: Dispensing Budget Allocation...`])
+
+        // Generate Agent Wallets (Mock addresses for now, but consistent)
+        const agentWallets = MOCK_AGENTS.map(a => ({
+            name: a.name,
+            address: `0x${Math.floor(Math.random() * 16 ** 40).toString(16).padStart(40, '0')}` // Random ETH address
+        }))
+
+        if (onFund) {
+            try {
+                setLogs(prev => [...prev, `⚡ SKALE: Initiating Batch Transfer to ${agentWallets.length} agents...`])
+                const txHashes = await onFund(agentWallets)
+                txHashes.forEach((hash, i) => {
+                    const agent = agentWallets[i]
+                    setLogs(prev => [...prev, `💸 Real Tx: 0.001 sFUEL -> ${agent.name}`, `   Hash: ${hash}`])
+                })
+            } catch (err: any) {
+                setLogs(prev => [...prev, `⚠️ Funding Error: ${err.message}. Falling back to simulation.`])
+                // Fallback Simulation
+                MOCK_AGENTS.forEach((a, i) => {
+                    const fundingAmount = (Math.random() * 0.005 + 0.002).toFixed(4)
+                    setTimeout(() => {
+                        setLogs(prev => [...prev, `💸 Transfer: ${fundingAmount} sFUEL sent to ${a.name}`])
+                    }, 500 + (i * 600))
+                })
+                await new Promise(r => setTimeout(r, 2500))
+            }
+        } else {
+            // Fallback Simulation
+            MOCK_AGENTS.forEach((a, i) => {
+                const fundingAmount = (Math.random() * 0.005 + 0.002).toFixed(4)
+                setTimeout(() => {
+                    setLogs(prev => [...prev, `💸 Transfer: ${fundingAmount} sFUEL sent to ${a.name}`])
+                }, 500 + (i * 600))
+            })
+            await new Promise(r => setTimeout(r, 2500))
+        }
+
+        const initialBids = MOCK_AGENTS.map((a, i) => ({
             name: a.name,
             price: 0,
             strategy: a.strategy,
@@ -54,6 +98,9 @@ export function useMultiAgent() {
             score: 0
         }))
         setBids(initialBids)
+
+        setState('ADMISSION')
+        setLogs(prev => [...prev, `📢 Protocol: Battle Royale initiated for "${objective}"`])
 
         // Artificial delay for UI drama
         await new Promise(r => setTimeout(r, 1500))

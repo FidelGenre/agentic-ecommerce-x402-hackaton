@@ -296,7 +296,6 @@ export default function Home() {
         to: treasuryAccount.address,
         value: parseEther(depositAmount),
         chain: skaleBiteSandbox,
-        gas: 12000000n
       })
 
       await publicClient.waitForTransactionReceipt({ hash })
@@ -308,6 +307,42 @@ export default function Home() {
       setErrorMessage(err.message || "Transaction failed.")
     } finally {
       setIsDepositing(false)
+    }
+  }
+
+
+
+  // Real Agent Funding Callback
+  const handleFundAgents = async (agents: { name: string, address: string }[]) => {
+    if (!treasuryAccount) return []
+    try {
+      const treasuryClient = createWalletClient({
+        account: treasuryAccount,
+        chain: skaleBiteSandbox,
+        transport: http(skaleBiteSandbox.rpcUrls.default.http[0])
+      })
+
+      const hashes: string[] = []
+      for (const agent of agents) {
+        // Send 0.001 sFUEL to each agent
+        const hash = await treasuryClient.sendTransaction({
+          account: treasuryAccount,
+          to: agent.address as `0x${string}`,
+          value: parseEther('0.001'),
+          chain: skaleBiteSandbox,
+          gas: 1000000n // Fixed low gas
+        })
+        hashes.push(hash)
+        // Brief delay to prevent nonce issues if any
+        await new Promise(r => setTimeout(r, 200))
+      }
+      // Update our local balance after spending
+      const newBal = await publicClient.getBalance({ address: treasuryAccount.address })
+      setTreasuryBalance(formatEther(newBal))
+      return hashes
+    } catch (error) {
+      console.error("Funding failed:", error)
+      throw error
     }
   }
 
@@ -467,8 +502,11 @@ export default function Home() {
             setIsUnlockingData(false)
             // Use agentsList to support custom agents
             const selectedPersonas = agentsList.filter(p => selectedAgentIds.includes(p.id))
-            // New API: Just pass the objective/item name
-            startBattle(selectedItem?.name || "High Performance Compute")
+            // New API: Pass objective AND funding callback
+            startBattle(
+              selectedItem?.name || "High Performance Compute",
+              handleFundAgents
+            )
           }, 1500)
         }, 1000)
       } catch (err) {
