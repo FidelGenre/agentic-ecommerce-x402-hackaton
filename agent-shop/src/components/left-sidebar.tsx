@@ -27,6 +27,7 @@ interface LeftSidebarProps {
     isDeploying: boolean
     isReady: boolean
     isTreasuryReady: boolean
+    treasuryBalance: string
     onFund: () => void
     onClose?: () => void
 }
@@ -51,6 +52,7 @@ export function LeftSidebar({
     isDeploying,
     isReady,
     isTreasuryReady,
+    treasuryBalance,
     onFund,
     onClose
 }: LeftSidebarProps) {
@@ -105,7 +107,12 @@ export function LeftSidebar({
                         <div className="flex items-center justify-between px-2 mb-2">
                             <div className="flex items-center gap-2">
                                 <Wallet className="w-4 h-4 text-white/40" />
-                                <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">Treasury</span>
+                                <span className="text-[10px] font-black text-white/40 uppercase tracking-widest flex items-center gap-2">
+                                    Treasury
+                                    <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-green-400 font-mono text-[9px] lowercase">
+                                        ({treasuryBalance} sfuel)
+                                    </span>
+                                </span>
                             </div>
                             <button
                                 onClick={onFund}

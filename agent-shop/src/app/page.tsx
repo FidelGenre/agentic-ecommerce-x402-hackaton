@@ -28,7 +28,7 @@ import { useAgent } from '@/hooks/useAgent'
 import { useMultiAgent } from '@/hooks/useMultiAgent'
 import { useVoiceInput } from '@/hooks/useVoiceInput'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Sparkles, Mic, Shield, Cpu, Zap, Globe, ArrowLeft, Users, User, FileJson, CheckCircle2, X as XIcon, Lock as LockIcon, ShieldCheck, ChevronLeft, Volume2, Wallet, RefreshCw, Loader2, Menu, History, Box } from 'lucide-react'
+import { Sparkles, Mic, Shield, Cpu, Zap, Globe, ArrowLeft, Users, User, FileJson, CheckCircle2, X as XIcon, Lock as LockIcon, ShieldCheck, ChevronLeft, Volume2, Wallet, RefreshCw, Loader2, Menu, History, Box, Github, Code } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 
@@ -508,28 +508,53 @@ export default function Home() {
                 Finality on SKALE Nebula. Performance by Gemini.
               </motion.p>
 
-              <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }} className="flex flex-col md:flex-row items-center gap-6 mb-20">
+              <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }} className="flex flex-col md:flex-row items-center gap-4 mb-20">
                 <button
                   onClick={handleLaunch}
-                  className="px-12 py-5 bg-white text-black font-black rounded-2xl text-lg shadow-[0_0_50px_rgba(255,255,255,0.15)] hover:scale-105 active:scale-95 transition-all flex items-center gap-3"
+                  className="px-12 py-5 bg-white text-black font-black rounded-2xl text-lg shadow-[0_0_50px_rgba(255,255,255,0.15)] hover:scale-105 active:scale-95 transition-all flex items-center gap-3 w-full md:w-auto"
                 >
                   <Zap className="w-5 h-5 fill-black" />
                   LAUNCH APP
                 </button>
+                <a
+                  href="https://github.com/FidelGenre/agentic-ecommerce-x402-hackaton"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-8 py-5 bg-white/5 border border-white/10 text-white font-bold rounded-2xl text-lg hover:bg-white/10 hover:scale-105 active:scale-95 transition-all flex items-center gap-3 w-full md:w-auto"
+                >
+                  <Github className="w-5 h-5" />
+                  SOURCE CODE
+                </a>
               </motion.div>
 
-              <motion.div initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.4 }} className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full max-w-4xl">
-                {[
-                  { label: 'Agents Online', value: '42', color: 'text-green-400' },
-                  { label: 'Active Grid', value: '12', color: 'text-cyan-400' },
-                  { label: 'Settled x402', value: '1.2k', color: 'text-indigo-400' },
-                  { label: 'Total Volume', value: '840k', color: 'text-purple-400' },
-                ].map((stat, idx) => (
-                  <div key={idx} className="bg-white/5 border border-white/10 p-6 rounded-2xl backdrop-blur-md">
-                    <div className={`text-2xl md:text-3xl font-black mb-1 font-mono ${stat.color}`}>{stat.value}</div>
-                    <div className="text-[10px] text-white/30 uppercase font-bold tracking-widest">{stat.label}</div>
+              <motion.div initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.4 }} className="flex flex-col items-center gap-8 w-full">
+                <div className="text-[10px] text-white/20 uppercase font-black tracking-[0.3em]">Built for the future of commerce</div>
+                <div className="flex flex-wrap items-center justify-center gap-8 md:gap-16 opacity-40 hover:opacity-100 transition-opacity duration-700">
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="p-3 rounded-xl bg-white/5 border border-white/10 mb-2">
+                      <Zap className="w-6 h-6 text-cyan-400" />
+                    </div>
+                    <span className="text-[10px] font-black text-white/60 tracking-widest uppercase">SKALE Nebula</span>
                   </div>
-                ))}
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="p-3 rounded-xl bg-white/5 border border-white/10 mb-2">
+                      <Sparkles className="w-6 h-6 text-indigo-400" />
+                    </div>
+                    <span className="text-[10px] font-black text-white/60 tracking-widest uppercase">Gemini AI</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="p-3 rounded-xl bg-white/5 border border-white/10 mb-2">
+                      <LockIcon className="w-6 h-6 text-purple-400" />
+                    </div>
+                    <span className="text-[10px] font-black text-white/60 tracking-widest uppercase">BITE Protocol</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="p-3 rounded-xl bg-white/5 border border-white/10 mb-2">
+                      <Box className="w-6 h-6 text-emerald-400" />
+                    </div>
+                    <span className="text-[10px] font-black text-white/60 tracking-widest uppercase">X402 Standard</span>
+                  </div>
+                </div>
               </motion.div>
             </div>
           </motion.div>
@@ -558,25 +583,24 @@ export default function Home() {
                     <p className="text-[8px] text-white/20 font-mono tracking-widest uppercase">Autonomous Core</p>
                   </div>
                 </div>
+              </div>
 
-                <div className="h-4 w-px bg-white/10 hidden md:block" />
-
-                <div className="hidden lg:flex items-center gap-4">
-                  <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10">
-                    <Users className="w-3 h-3 text-white/40" />
-                    <span className="text-[10px] font-bold text-white/60">Agents</span>
-                    <span className="text-[10px] font-black text-white">6</span>
-                  </div>
-                  <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10">
-                    <Zap className="w-3 h-3 text-cyan-400" />
-                    <span className="text-[10px] font-bold text-white/60">Active</span>
-                    <span className="text-[10px] font-black text-white">{isBattleActive || agentState !== 'IDLE' ? '1' : '0'}</span>
-                  </div>
-                  <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10">
-                    <FileJson className="w-3 h-3 text-purple-400" />
-                    <span className="text-[10px] font-bold text-white/60">Deals</span>
-                    <span className="text-[10px] font-black text-white">{completedDeals.length}</span>
-                  </div>
+              {/* Centered Status Badges */}
+              <div className="absolute left-1/2 -translate-x-1/2 hidden lg:flex items-center gap-4">
+                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10">
+                  <Users className="w-3 h-3 text-white/40" />
+                  <span className="text-[10px] font-bold text-white/60">Agents</span>
+                  <span className="text-[10px] font-black text-white">6</span>
+                </div>
+                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10">
+                  <Zap className="w-3 h-3 text-cyan-400" />
+                  <span className="text-[10px] font-bold text-white/60">Active</span>
+                  <span className="text-[10px] font-black text-white">{isBattleActive || agentState !== 'IDLE' ? '1' : '0'}</span>
+                </div>
+                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10">
+                  <FileJson className="w-3 h-3 text-purple-400" />
+                  <span className="text-[10px] font-bold text-white/60">Deals</span>
+                  <span className="text-[10px] font-black text-white">{completedDeals.length}</span>
                 </div>
               </div>
 
@@ -598,6 +622,7 @@ export default function Home() {
                   setMode={setMode}
                   items={items}
                   agents={agentsList}
+                  treasuryBalance={treasuryBalance}
                   selectedItem={selectedItem}
                   setSelectedItem={setSelectedItem}
                   selected1v1AgentId={selected1v1AgentId}
@@ -639,6 +664,7 @@ export default function Home() {
                         setMode={setMode}
                         items={items}
                         agents={agentsList}
+                        treasuryBalance={treasuryBalance}
                         selectedItem={selectedItem}
                         setSelectedItem={setSelectedItem}
                         selected1v1AgentId={selected1v1AgentId}
