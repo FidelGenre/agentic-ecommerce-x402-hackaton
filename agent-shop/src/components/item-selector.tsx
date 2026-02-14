@@ -59,16 +59,17 @@ export const MOCK_ITEMS: Item[] = [
 ]
 
 interface ItemSelectorProps {
+    items: Item[]
     selectedItem: Item | null
     onSelect: (item: Item) => void
 }
 
-export function ItemSelector({ selectedItem, onSelect }: ItemSelectorProps) {
+export function ItemSelector({ items, selectedItem, onSelect }: ItemSelectorProps) {
     return (
         <div className="w-full space-y-4">
             <h3 className="text-sm font-medium text-white/50 uppercase tracking-wider">Select Target Item</h3>
             <div className="space-y-2">
-                {MOCK_ITEMS.map((item) => {
+                {items.map((item) => {
                     const isSelected = selectedItem?.id === item.id
                     return (
                         <motion.button

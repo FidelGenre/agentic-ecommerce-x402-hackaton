@@ -3,13 +3,15 @@
 import { motion } from 'framer-motion'
 import { WalletConnect } from '@/components/wallet-connect'
 import { ItemSelector, Item } from '@/components/item-selector'
-import { AgentSelector } from '@/components/agent-selector'
-import { Wallet, Settings, Zap, Users, User, CheckCircle2, Play, Pause, Activity, Sparkles, X } from 'lucide-react'
+import { AgentSelector, AgentPersona } from '@/components/agent-selector'
+import { Wallet, Settings, Zap, Users, User, CheckCircle2, Play, Pause, Activity, Sparkles, X, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface LeftSidebarProps {
     mode: '1v1' | 'multi'
     setMode: (mode: '1v1' | 'multi') => void
+    items: Item[]
+    agents: AgentPersona[]
     selectedItem: Item | null
     setSelectedItem: (item: Item | null) => void
     selected1v1AgentId: string
@@ -20,6 +22,8 @@ interface LeftSidebarProps {
     objective: string
     setObjective: (o: string) => void
     onDeploy: () => void
+    onAddItem: () => void
+    onAddAgent: () => void
     isDeploying: boolean
     isReady: boolean
     isTreasuryReady: boolean
@@ -40,6 +44,10 @@ export function LeftSidebar({
     objective,
     setObjective,
     onDeploy,
+    onAddItem,
+    onAddAgent,
+    items,
+    agents,
     isDeploying,
     isReady,
     isTreasuryReady,
@@ -115,22 +123,39 @@ export function LeftSidebar({
                 <div className="space-y-8">
                     {/* Item Selector */}
                     <div className="px-1">
-                        <div className="flex items-center gap-2 mb-4">
-                            <div className="w-1 h-3 bg-indigo-500 rounded-full" />
-                            <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Service Target</h3>
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-2">
+                                <div className="w-1 h-3 bg-indigo-500 rounded-full" />
+                                <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Service Target</h3>
+                            </div>
+                            <button
+                                onClick={onAddItem}
+                                className="p-1 hover:bg-white/5 rounded-md border border-white/10 text-white/40 hover:text-white transition-colors"
+                            >
+                                <Plus className="w-3 h-3" />
+                            </button>
                         </div>
-                        <ItemSelector selectedItem={selectedItem} onSelect={setSelectedItem} />
+                        <ItemSelector items={items} selectedItem={selectedItem} onSelect={setSelectedItem} />
                     </div>
 
                     <div className="w-full h-px bg-white/5" />
 
                     {/* Agent Selector */}
                     <div className="px-1">
-                        <div className="flex items-center gap-2 mb-4">
-                            <div className="w-1 h-3 bg-purple-500 rounded-full" />
-                            <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Agent Personas</h3>
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-2">
+                                <div className="w-1 h-3 bg-purple-500 rounded-full" />
+                                <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Agent Personas</h3>
+                            </div>
+                            <button
+                                onClick={onAddAgent}
+                                className="p-1 hover:bg-white/5 rounded-md border border-white/10 text-white/40 hover:text-white transition-colors"
+                            >
+                                <Plus className="w-3 h-3" />
+                            </button>
                         </div>
                         <AgentSelector
+                            agents={agents}
                             mode={mode === '1v1' ? 'single' : 'multi'}
                             selectedAgents={mode === '1v1' ? [selected1v1AgentId] : selectedAgentIds}
                             onToggle={toggleAgentSelection}

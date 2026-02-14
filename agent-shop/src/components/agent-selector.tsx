@@ -41,14 +41,15 @@ export const AGENT_PERSONAS: AgentPersona[] = [
 ]
 
 interface AgentSelectorProps {
+    agents: AgentPersona[]
     selectedAgents: string[]
     onToggle: (agentId: string) => void
     onSelectAll?: () => void
     mode?: 'single' | 'multi'
 }
 
-export function AgentSelector({ selectedAgents, onToggle, onSelectAll, mode = 'multi' }: AgentSelectorProps) {
-    const isAllSelected = selectedAgents.length === AGENT_PERSONAS.length
+export function AgentSelector({ agents, selectedAgents, onToggle, onSelectAll, mode = 'multi' }: AgentSelectorProps) {
+    const isAllSelected = selectedAgents.length === agents.length
 
     return (
         <div className="w-full space-y-4">

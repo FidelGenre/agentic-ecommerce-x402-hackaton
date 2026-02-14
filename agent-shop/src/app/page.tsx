@@ -22,13 +22,13 @@ import { ProgressTimeline } from '@/components/progress-timeline'
 import { EventSidebar } from '@/components/event-sidebar'
 import { LeftSidebar } from '@/components/left-sidebar'
 import { ItemSelector, MOCK_ITEMS, Item } from '@/components/item-selector'
-import { AgentSelector, AGENT_PERSONAS } from '@/components/agent-selector'
+import { AgentSelector, AGENT_PERSONAS, AgentPersona } from '@/components/agent-selector'
 import { NegotiationView } from '@/components/negotiation-view'
 import { useAgent } from '@/hooks/useAgent'
 import { useMultiAgent } from '@/hooks/useMultiAgent'
 import { useVoiceInput } from '@/hooks/useVoiceInput'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Sparkles, Mic, Shield, Cpu, Zap, Globe, ArrowLeft, Users, User, FileJson, CheckCircle2, X as XIcon, Lock as LockIcon, ShieldCheck, ChevronLeft, Volume2, Wallet, RefreshCw, Loader2, Menu, History } from 'lucide-react'
+import { Sparkles, Mic, Shield, Cpu, Zap, Globe, ArrowLeft, Users, User, FileJson, CheckCircle2, X as XIcon, Lock as LockIcon, ShieldCheck, ChevronLeft, Volume2, Wallet, RefreshCw, Loader2, Menu, History, Box } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 
@@ -70,6 +70,8 @@ export default function Home() {
   const { state: agentState, logs, processRequest, reset: resetAgent } = useAgent()
 
   // Multi-Agent State
+  const [items, setItems] = useState<Item[]>(MOCK_ITEMS)
+  const [agentsList, setAgentsList] = useState<AgentPersona[]>(AGENT_PERSONAS)
   const [selectedItem, setSelectedItem] = useState<Item | null>(null)
   const [selectedAgentIds, setSelectedAgentIds] = useState<string[]>([])
   const { agents, isBattleActive, round, winner, startBattle, resetBattle } = useMultiAgent()
@@ -100,6 +102,13 @@ export default function Home() {
   // Mobile Navigation State
   const [showMobileLeft, setShowMobileLeft] = useState(false)
   const [showMobileRight, setShowMobileRight] = useState(false)
+  const [showAddItemModal, setShowAddItemModal] = useState(false)
+  const [showAddAgentModal, setShowAddAgentModal] = useState(false)
+
+  // New Item Form State
+  const [newItemBase, setNewItemBase] = useState({ name: '', price: '0.5', rarity: 'rare' })
+  // New Agent Form State
+  const [newAgentBase, setNewAgentBase] = useState({ name: '', strategy: 'aggressive' })
 
 
   // Helpers
@@ -353,6 +362,37 @@ export default function Home() {
     }
   }
 
+  const handleAddItemFinal = () => {
+    if (!newItemBase.name) return
+    const newItem: Item = {
+      id: `custom_${Date.now()}`,
+      name: newItemBase.name,
+      basePrice: Number(newItemBase.price),
+      description: 'Custom added service.',
+      icon: Box,
+      rarity: newItemBase.rarity as any,
+      provider: 'User Custom',
+      trustScore: 5.0
+    }
+    setItems(prev => [...prev, newItem])
+    setSelectedItem(newItem)
+    setShowAddItemModal(false)
+  }
+
+  const handleAddAgentFinal = () => {
+    if (!newAgentBase.name) return
+    const newAgent: AgentPersona = {
+      id: `custom_agent_${Date.now()}`,
+      name: newAgentBase.name,
+      role: 'Custom Agent',
+      description: (newAgentBase as any).description || `Expert in ${newAgentBase.strategy} negotiation.`,
+      icon: User,
+      style: newAgentBase.strategy as any
+    }
+    setAgentsList(prev => [...prev, newAgent])
+    setShowAddAgentModal(false)
+  }
+
   return (
     <main className="fixed inset-0 h-screen w-screen overflow-hidden bg-black flex flex-col items-center relative text-white">
       <AnimatePresence>
@@ -556,6 +596,8 @@ export default function Home() {
                 <LeftSidebar
                   mode={mode}
                   setMode={setMode}
+                  items={items}
+                  agents={agentsList}
                   selectedItem={selectedItem}
                   setSelectedItem={setSelectedItem}
                   selected1v1AgentId={selected1v1AgentId}
@@ -566,6 +608,8 @@ export default function Home() {
                   objective={objective}
                   setObjective={setObjective}
                   onDeploy={handleDeploy}
+                  onAddItem={() => setShowAddItemModal(true)}
+                  onAddAgent={() => setShowAddAgentModal(true)}
                   isDeploying={agentState !== 'IDLE' || isAuthorizing || isUnlockingData}
                   isReady={isReadyToNegotiate}
                   isTreasuryReady={!!treasuryAccount}
@@ -593,6 +637,8 @@ export default function Home() {
                       <LeftSidebar
                         mode={mode}
                         setMode={setMode}
+                        items={items}
+                        agents={agentsList}
                         selectedItem={selectedItem}
                         setSelectedItem={setSelectedItem}
                         selected1v1AgentId={selected1v1AgentId}
@@ -603,6 +649,8 @@ export default function Home() {
                         objective={objective}
                         setObjective={setObjective}
                         onDeploy={() => { handleDeploy(); setShowMobileLeft(false); }}
+                        onAddItem={() => { setShowAddItemModal(true); setShowMobileLeft(false); }}
+                        onAddAgent={() => { setShowAddAgentModal(true); setShowMobileLeft(false); }}
                         isDeploying={agentState !== 'IDLE' || isAuthorizing || isUnlockingData}
                         isReady={isReadyToNegotiate}
                         isTreasuryReady={!!treasuryAccount}
@@ -779,6 +827,89 @@ export default function Home() {
                   Verify on Chain
                 </button>
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Creation Modals */}
+      <AnimatePresence>
+        {showAddItemModal && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[250] flex items-center justify-center bg-black/90 backdrop-blur-xl p-4">
+            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-[#1a1b26] border border-white/10 p-8 rounded-3xl w-full max-w-md space-y-6 shadow-2xl relative">
+              <button onClick={() => setShowAddItemModal(false)} className="absolute top-4 right-4 p-2 hover:bg-white/5 rounded-xl transition-colors"><XIcon className="w-5 h-5 text-white/30" /></button>
+              <div className="space-y-2">
+                <h3 className="text-2xl font-black uppercase tracking-tighter">Create Target Item</h3>
+                <p className="text-[10px] font-black text-white/20 uppercase tracking-widest">Deploy a new contract for agents to bid on.</p>
+              </div>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest">Item Name</label>
+                  <input
+                    value={newItemBase.name}
+                    onChange={e => setNewItemBase(p => ({ ...p, name: e.target.value }))}
+                    placeholder="e.g. Advanced AI Compute"
+                    className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-xs font-bold text-white focus:border-indigo-500/50 outline-none"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest">Base Price (sFUEL)</label>
+                  <input
+                    type="number"
+                    value={newItemBase.price}
+                    onChange={e => setNewItemBase(p => ({ ...p, price: e.target.value }))}
+                    className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-xs font-mono font-bold text-green-400 focus:border-green-500/50 outline-none"
+                  />
+                </div>
+              </div>
+              <button
+                onClick={handleAddItemFinal}
+                className="w-full py-5 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-2xl shadow-xl shadow-indigo-500/20 transition-all active:scale-[0.98] uppercase tracking-[0.2em] text-xs"
+              >
+                Deploy Target
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {showAddAgentModal && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[250] flex items-center justify-center bg-black/90 backdrop-blur-xl p-4">
+            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-[#1a1b26] border border-white/10 p-8 rounded-3xl w-full max-w-md space-y-6 shadow-2xl relative">
+              <button onClick={() => setShowAddAgentModal(false)} className="absolute top-4 right-4 p-2 hover:bg-white/5 rounded-xl transition-colors"><XIcon className="w-5 h-5 text-white/30" /></button>
+              <div className="space-y-2">
+                <h3 className="text-2xl font-black uppercase tracking-tighter">Create Custom Agent</h3>
+                <p className="text-[10px] font-black text-white/20 uppercase tracking-widest">Initialize a new persona with custom logic.</p>
+              </div>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest">Agent Name</label>
+                  <input
+                    value={newAgentBase.name}
+                    onChange={e => setNewAgentBase(p => ({ ...p, name: e.target.value }))}
+                    placeholder="e.g. ALPHA.bid"
+                    className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-xs font-bold text-white focus:border-purple-500/50 outline-none"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest">Negotiation Strategy</label>
+                  <select
+                    value={newAgentBase.strategy}
+                    onChange={e => setNewAgentBase(p => ({ ...p, strategy: e.target.value }))}
+                    className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-xs font-bold text-white focus:border-purple-500/50 outline-none appearance-none"
+                  >
+                    <option value="aggressive">Aggressive (Pressure focus)</option>
+                    <option value="analytical">Analytical (Value focus)</option>
+                    <option value="diplomatic">Diplomatic (Win-win focus)</option>
+                    <option value="chaos">Chaos (Unpredictable)</option>
+                  </select>
+                </div>
+              </div>
+              <button
+                onClick={handleAddAgentFinal}
+                className="w-full py-5 bg-purple-600 hover:bg-purple-500 text-white font-black rounded-2xl shadow-xl shadow-purple-500/20 transition-all active:scale-[0.98] uppercase tracking-[0.2em] text-xs"
+              >
+                Initialize Agent
+              </button>
             </motion.div>
           </motion.div>
         )}
