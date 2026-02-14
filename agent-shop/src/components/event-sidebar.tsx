@@ -2,19 +2,30 @@
 import { AgentLog } from '@/hooks/useAgent'
 import { Receipt } from '@/app/page'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Terminal, Activity, Zap, Shield, ExternalLink, CheckCircle2, History, MessageSquare, Box, ShoppingCart, Trophy } from 'lucide-react'
+import { Terminal, History, ExternalLink, ShieldCheck, Activity, X, Zap, Shield, CheckCircle2, MessageSquare, Box, ShoppingCart, Trophy } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface EventSidebarProps {
     logs: AgentLog[]
     deals: Receipt[]
+    onClose?: () => void
 }
 
-export function EventSidebar({ logs, deals }: EventSidebarProps) {
+export function EventSidebar({ logs, deals, onClose }: EventSidebarProps) {
     const reversedLogs = [...logs].reverse().slice(0, 50)
 
     return (
-        <aside className="h-full flex flex-col border-l border-white/5 bg-[#0a0a0c] w-80 shrink-0 overflow-hidden">
+        <aside className="h-full flex flex-col border-l border-white/5 bg-[#0a0a0c] w-full overflow-hidden relative">
+            {/* Mobile Close Button */}
+            {onClose && (
+                <button
+                    onClick={onClose}
+                    className="xl:hidden absolute top-4 right-4 p-2.5 bg-black/60 rounded-xl border border-white/20 text-white shadow-2xl z-[60] active:scale-95 transition-all"
+                >
+                    <X className="w-5 h-5" />
+                </button>
+            )}
+
             {/* Contract Events Section */}
             <div className="flex-1 flex flex-col overflow-hidden">
                 <div className="p-4 border-b border-white/5 flex flex-col gap-1">

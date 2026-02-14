@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import { WalletConnect } from '@/components/wallet-connect'
 import { ItemSelector, Item } from '@/components/item-selector'
 import { AgentSelector } from '@/components/agent-selector'
-import { Wallet, Settings, Zap, Users, User, CheckCircle2, Play, Pause, RotateCcw, Activity, Sparkles } from 'lucide-react'
+import { Wallet, Settings, Zap, Users, User, CheckCircle2, Play, Pause, Activity, Sparkles, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface LeftSidebarProps {
@@ -24,6 +24,7 @@ interface LeftSidebarProps {
     isReady: boolean
     isTreasuryReady: boolean
     onFund: () => void
+    onClose?: () => void
 }
 
 export function LeftSidebar({
@@ -42,12 +43,23 @@ export function LeftSidebar({
     isDeploying,
     isReady,
     isTreasuryReady,
-    onFund
+    onFund,
+    onClose
 }: LeftSidebarProps) {
     const [speed, setSpeed] = (typeof window !== 'undefined') ? [5, (v: any) => { }] as const : [5, (v: any) => { }] as const; // Mocked state for UI
 
     return (
-        <aside className="w-80 flex-none h-full border-r border-white/5 bg-[#0a0a0c] overflow-y-auto custom-scrollbar z-30 flex flex-col">
+        <aside className="w-full h-full border-r border-white/5 bg-[#0a0a0c] overflow-y-auto custom-scrollbar z-30 flex flex-col relative">
+            {/* Mobile Close Button */}
+            {onClose && (
+                <button
+                    onClick={onClose}
+                    className="lg:hidden absolute top-4 right-4 p-2.5 bg-black/60 rounded-xl border border-white/20 text-white shadow-2xl z-[60] active:scale-95 transition-all"
+                >
+                    <X className="w-5 h-5" />
+                </button>
+            )}
+
             <div className="p-4 flex-1 space-y-6">
 
                 {/* Mode Switcher */}
