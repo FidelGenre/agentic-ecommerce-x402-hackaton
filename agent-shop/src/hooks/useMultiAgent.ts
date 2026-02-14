@@ -15,7 +15,7 @@
 
 import { useState, useCallback } from 'react'
 
-export type MultiAgentState = 'IDLE' | 'ADMISSION' | 'BIDDING' | 'EXECUTING' | 'COMPLETED'
+export type MultiAgentState = 'IDLE' | 'FUNDING' | 'ADMISSION' | 'BIDDING' | 'EXECUTING' | 'COMPLETED'
 
 export interface AgentBid {
     name: string
@@ -45,7 +45,7 @@ export function useMultiAgent() {
      */
     const startBattle = useCallback(async (objective: string, onFund?: (agents: { name: string, address: string }[]) => Promise<string[]>) => {
         setLogs([]) // Clear previous
-        setState('IDLE')
+        setState('FUNDING')
 
         // Initialize Agents immediately so they appear on UI
         const initialBids = MOCK_AGENTS.map((a, i) => ({

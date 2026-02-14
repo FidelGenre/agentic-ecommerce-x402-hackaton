@@ -103,7 +103,7 @@ export interface Receipt {
 
 // --- Constants ---
 const TREASURY_ADDRESS = '0x7e...3921' // Mock Treasury for demo
-const PROVIDER_ADDRESS = '0xc4083B1E81ceb461Ccef3FDa8A9F24F0d764B6D8' as `0x${string}` // Simulation Service Provider
+const PROVIDER_ADDRESS = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266' as `0x${string}` // Valid Simulation Service Provider EOA (Hardhat #0)
 
 export default function Home() {
   const { connector, address: userAddress, chainId: accountChainId } = useAccount()
@@ -126,7 +126,7 @@ export default function Home() {
   const { state: battleState, bids: battleBids, logs: battleLogs, startBattle, resetBattle } = useMultiAgent()
 
   // Compatibility Adapters
-  const isBattleActive = battleState === 'BIDDING' || battleState === 'ADMISSION' || battleState === 'EXECUTING'
+  const isBattleActive = battleState === 'BIDDING' || battleState === 'ADMISSION' || battleState === 'EXECUTING' || battleState === 'FUNDING'
   const round = 1 // Simplified representation
 
   // Map 'bids' (New API) to 'agents' (Old UI Expected Format)
@@ -322,6 +322,11 @@ export default function Home() {
         transport: http(skaleBiteSandbox.rpcUrls.default.http[0])
       })
 
+      // Fix: Get Nonce Manually to prevent "Invalid Nonce" errors in rapid succession
+      let currentNonce = await publicClient.getTransactionCount({
+        address: treasuryAccount.address
+      })
+
       const hashes: string[] = []
       for (const agent of agents) {
         // Send 0.001 sFUEL to each agent
@@ -330,15 +335,21 @@ export default function Home() {
           to: agent.address as `0x${string}`,
           value: parseEther('0.001'),
           chain: skaleBiteSandbox,
-          gas: 1000000n // Fixed low gas
+          gas: 1000000n, // Fixed low gas
+          nonce: currentNonce++ // Manually increment nonce
         })
         hashes.push(hash)
-        // Brief delay to prevent nonce issues if any
-        await new Promise(r => setTimeout(r, 200))
+
+        // Brief delay is still good practice, but nonce is now handled
+        await new Promise(r => setTimeout(r, 500))
       }
-      // Update our local balance after spending
-      const newBal = await publicClient.getBalance({ address: treasuryAccount.address })
-      setTreasuryBalance(formatEther(newBal))
+
+      // Update our local balance after spending (with delay to allow indexing)
+      setTimeout(async () => {
+        const newBal = await publicClient.getBalance({ address: treasuryAccount.address })
+        setTreasuryBalance(formatEther(newBal))
+      }, 5000)
+
       return hashes
     } catch (error) {
       console.error("Funding failed:", error)
@@ -527,14 +538,20 @@ export default function Home() {
         transport: http(skaleBiteSandbox.rpcUrls.default.http[0])
       })
 
-      const bidValue = parseEther(winner.currentBid.toString())
+      const bidValue = parseEther(winner.currentBid.toFixed(18)) // Ensure safe string conversion
+
+      // Fix: Manually fetch Nonce to avoid "Invalid Nonce" or "Replacement transaction underpriced" errors
+      const currentNonce = await publicClient.getTransactionCount({
+        address: treasuryAccount.address
+      })
 
       const hash = await treasuryClient.sendTransaction({
         account: treasuryAccount,
         to: PROVIDER_ADDRESS,
         value: bidValue,
         chain: skaleBiteSandbox,
-        gas: 12000000n
+        gas: 500000n, // Reduced gas limit (12M was too high and caused issues)
+        nonce: currentNonce
       })
 
       // 2. Wait for confirmation
@@ -978,6 +995,12 @@ export default function Home() {
                           round={round}
                           onSettle={handleSettle}
                           isSettled={!!winner}
+                          logs={battleLogs.map((l, i) => ({
+                            timestamp: Date.now() + i,
+                            type: l.includes('Real Tx') ? 'action' : l.includes('Error') ? 'error' : l.includes('Transfer') ? 'action' : 'info',
+                            content: l,
+                            id: `${i}`
+                          } as any))}
                         />
                       ) : (
                         <div className="flex-1 flex flex-col items-center justify-center h-full text-center opacity-20 p-6">
@@ -1032,7 +1055,12 @@ export default function Home() {
 
               <div className="hidden xl:block w-96 h-full flex-none border-l border-white/5">
                 <EventSidebar
-                  logs={mode === '1v1' ? logs : battleLogs.map((l, i) => ({ timestamp: Date.now() + i, type: 'info', content: l } as any))}
+                  logs={mode === '1v1' ? logs : battleLogs.map((l, i) => ({
+                    timestamp: Date.now() + i, // Use index for unique timestamp key
+                    type: l.includes('Real Tx') ? 'tx' : l.includes('Error') ? 'error' : 'info',
+                    content: l,
+                    metadata: l.includes('Hash:') ? { hash: l.split('Hash: ')[1] } : undefined
+                  } as any))}
                   deals={completedDeals}
                   onClose={handleCloseReceipt}
                 />
@@ -1062,7 +1090,12 @@ export default function Home() {
                         <XIcon className="w-5 h-5" />
                       </button>
                       <EventSidebar
-                        logs={mode === '1v1' ? logs : battleLogs.map((l, i) => ({ timestamp: Date.now() + i, type: 'info', content: l } as any))}
+                        logs={mode === '1v1' ? logs : battleLogs.map((l, i) => ({
+                          timestamp: Date.now() + i,
+                          type: l.includes('Real Tx') ? 'tx' : l.includes('Error') ? 'error' : 'info',
+                          content: l,
+                          metadata: l.includes('Hash:') ? { hash: l.split('Hash: ')[1] } : undefined
+                        } as any))}
                         deals={completedDeals}
                         onClose={(r: any) => { // Fixed type inference
                           if (r) handleCloseReceipt(r)
