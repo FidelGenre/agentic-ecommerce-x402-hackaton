@@ -88,7 +88,7 @@ export async function runAgentArbitrageFlow(
         address: MARKETPLACE_ADDRESS,
         abi: SERVICE_MARKETPLACE_ABI,
         functionName: 'registerService',
-        args: ['GPU Compute', 'High-performance GPU processing for AI workloads', parseEther('0.01')],
+        args: ['GPU Compute', 'High-performance GPU processing for AI workloads', parseEther('0.01'), 99, 5],
     })
     await publicClient.waitForTransactionReceipt({ hash: registerHash })
     onLog({ step: 'REGISTER', detail: '✅ Service registered on-chain', txHash: registerHash })
