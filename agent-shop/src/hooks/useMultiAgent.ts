@@ -205,7 +205,8 @@ export function useMultiAgent() {
             if (winnerAgent) setWinner(winnerAgent)
 
             return prev.map(a => {
-                const isWinner = a.currentBid === highestBid && a.currentBid > 0
+                // Fix: Only mark the specific selected winnerAgent as 'winner', not just anyone with the matching bid
+                const isWinner = winnerAgent ? a.persona.id === winnerAgent.persona.id : false
                 const newStatus: BattleAgent['status'] = isWinner ? 'winner' : 'dropped'
 
                 // Add final log

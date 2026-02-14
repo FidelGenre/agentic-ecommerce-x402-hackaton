@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils'
 interface EventSidebarProps {
     logs: AgentLog[]
     deals: Receipt[]
-    onClose?: () => void
+    onClose?: (receipt?: Receipt) => void
 }
 
 export function EventSidebar({ logs, deals, onClose }: EventSidebarProps) {
@@ -28,7 +28,7 @@ export function EventSidebar({ logs, deals, onClose }: EventSidebarProps) {
             {/* Mobile Close Button */}
             {onClose && (
                 <button
-                    onClick={onClose}
+                    onClick={() => onClose && onClose()}
                     className="xl:hidden absolute top-4 right-4 p-2.5 bg-black/60 rounded-xl border border-white/20 text-white shadow-2xl z-[60] active:scale-95 transition-all"
                 >
                     <X className="w-5 h-5" />
@@ -62,16 +62,16 @@ export function EventSidebar({ logs, deals, onClose }: EventSidebarProps) {
                                                 log.type === 'action' ? 'bg-cyan-500' : 'bg-white/20'
                                     )} />
 
-                                    <div className="text-[9px] text-white/20 font-mono mb-1 flex justify-between items-center">
+                                    <div className="text-[11px] text-white/30 font-mono mb-1 flex justify-between items-center">
                                         <span>{new Date(log.timestamp).toLocaleTimeString([], { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>
                                         {log.type.toUpperCase()}
                                     </div>
 
                                     <div className={cn(
-                                        "text-[11px] leading-relaxed font-bold",
+                                        "text-xs leading-relaxed font-bold",
                                         log.type === 'error' ? 'text-red-400' :
                                             log.type === 'tx' ? 'text-purple-300' :
-                                                log.type === 'action' ? 'text-cyan-200' : 'text-white/60'
+                                                log.type === 'action' ? 'text-cyan-200' : 'text-white/70'
                                     )}>
                                         {log.content}
                                     </div>
@@ -118,7 +118,9 @@ export function EventSidebar({ logs, deals, onClose }: EventSidebarProps) {
                                     key={deal.id}
                                     initial={{ opacity: 0, y: 10 }}
                                     animate={{ opacity: 1, y: 0 }}
-                                    className="p-3 rounded-xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.05] transition-colors group"
+                                    whileHover={{ scale: 1.02, backgroundColor: 'rgba(255, 255, 255, 0.05)' }}
+                                    onClick={() => onClose && onClose(deal)} // Pass deal back to parent
+                                    className="p-3 rounded-xl bg-white/[0.03] border border-white/5 cursor-pointer transition-all group active:scale-95"
                                 >
                                     <div className="flex justify-between items-start mb-2">
                                         <div className="flex items-center gap-2">
@@ -126,11 +128,11 @@ export function EventSidebar({ logs, deals, onClose }: EventSidebarProps) {
                                                 <ShoppingCart className="w-3 h-3 text-indigo-400" />
                                             </div>
                                             <div className="text-[11px] font-black text-white/90 truncate max-w-[120px]">
-                                                {deal.cartMandate.item}
+                                                {deal.cartMandate?.item || 'Unknown Item'}
                                             </div>
                                         </div>
                                         <div className="text-[10px] font-black text-green-400">
-                                            {deal.cartMandate.finalPrice} <span className="text-[8px] opacity-60">sFUEL</span>
+                                            {deal.cartMandate?.finalPrice || '0.00'} <span className="text-[8px] opacity-60">sFUEL</span>
                                         </div>
                                     </div>
 
@@ -139,7 +141,7 @@ export function EventSidebar({ logs, deals, onClose }: EventSidebarProps) {
                                             <span className="text-white/20 uppercase tracking-tighter">Negotiator</span>
                                             <span className="text-white/60 flex items-center gap-1">
                                                 <Trophy className="w-2.5 h-2.5 text-yellow-500/50" />
-                                                {deal.cartMandate.agentId}
+                                                {deal.cartMandate?.agentId || 'Unknown Agent'}
                                             </span>
                                         </div>
                                         <div className="flex flex-col gap-0.5 text-right">

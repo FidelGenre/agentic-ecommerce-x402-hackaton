@@ -177,26 +177,31 @@ export function useAgent() {
             try {
                 const totalServices = await publicClient.readContract({
                     address: CONTRACT as Hex,
-                    abi: SERVICE_MARKETPLACE_ABI,
+                    abi: SERVICE_MARKETPLACE_ABI, // Ensuring ABI is fresh
                     functionName: 'nextServiceId',
                 })
 
-                addLog('info', `📋 Found ${Number(totalServices)} total services registered on-chain.`)
+                addLog('info', `📋 Found ${totalServices.toString()} total services registered on-chain.`)
 
                 // Real Discovery: Simulation of filtering the "Best" from the real list
                 // To be 100% real without heavy loops, we read the last few registered
                 const services: any[] = []
-                const limit = Math.min(Number(totalServices), 5)
+                const total = BigInt(totalServices)
+                const limit = total < 5n ? Number(total) : 5
+
                 for (let i = 0; i < limit; i++) {
-                    const id = Number(totalServices) - 1 - i
-                    if (id < 0) break
-                    const svc = await publicClient.readContract({
-                        address: CONTRACT as Hex,
-                        abi: SERVICE_MARKETPLACE_ABI,
-                        functionName: 'services',
-                        args: [BigInt(id)]
-                    })
-                    services.push(svc)
+                    try {
+                        const id = total - 1n - BigInt(i)
+                        const svc = await publicClient.readContract({
+                            address: CONTRACT as Hex,
+                            abi: SERVICE_MARKETPLACE_ABI,
+                            functionName: 'services',
+                            args: [id]
+                        })
+                        services.push(svc)
+                    } catch (err) {
+                        console.error("Error fetching service:", err)
+                    }
                 }
 
                 if (services.length > 0) {
@@ -204,13 +209,18 @@ export function useAgent() {
                     await new Promise(r => setTimeout(r, 1000))
 
                     // The 'services' call returns a tuple/array. services[0] is the first one found.
-                    // svc[1] is name, svc[3] is pricePerUnit in wei
+                    // svc[2] is name, svc[4] is pricePerUnit in wei
                     const bestSvc = services[0]
-                    addLog('info', `✅ Top Match Found: ${bestSvc[1]} (Ranked by uptime and price: ${formatEther(bestSvc[3])} sFUEL)`)
+                    addLog('info', `✅ Top Match Found: ${bestSvc[2]} (Ranked by uptime and price: ${formatEther(bestSvc[4])} sFUEL)`)
                 } else {
                     addLog('info', `📋 No matching services found on-chain. spwaning dedicated agent resource...`)
                 }
-            } catch (e) {
+            } catch (e: any) {
+                if (e.message && (e.message.includes('User rejected') || e.message.includes('denied'))) {
+                    addLog('error', '❌ Discovery Cancelled')
+                    setState('IDLE')
+                    return
+                }
                 console.warn("Discovery error:", e)
                 addLog('info', `📋 Service discovery completed via fallback oracle.`)
             }
@@ -241,8 +251,15 @@ export function useAgent() {
                         })
                         await publicClient.waitForTransactionReceipt({ hash: fuelHash })
                         addLog('tx', `✅ Provider Fueled`, { hash: fuelHash })
-                    } catch (err) {
-                        console.error("Real fueling failed, falling back to sim:", err)
+                    } catch (err: any) {
+                        console.error("Real fueling failed:", err)
+                        if (err.message && (err.message.includes('User rejected') || err.message.includes('denied'))) {
+                            console.warn("User cancelled fueling.")
+                            addLog('error', '❌ Transaction Cancelled by User')
+                            setState('IDLE') // Reset state
+                            return // Stop execution
+                        }
+                        console.warn("Falling back to sim due to error.")
                         addLog('info', `⚠️ Network/Wallet Issue: Falling back to simulated fueling.`)
                     }
                 } else {
@@ -326,8 +343,13 @@ export function useAgent() {
                     const reqReceipt = await publicClient.waitForTransactionReceipt({ hash: reqHash })
                     addLog('tx', `✅ Request Created! Block #${reqReceipt.blockNumber}`, { hash: reqHash })
                     requestSuccess = true
-                } catch (err) {
+                } catch (err: any) {
                     console.error("Real request failed:", err)
+                    if (err.message && (err.message.includes('User rejected') || err.message.includes('denied'))) {
+                        addLog('error', '❌ Transaction Cancelled by User')
+                        setState('IDLE')
+                        return
+                    }
                     addLog('error', `❌ Transaction Failed: ${err instanceof Error ? err.message : 'Unknown Error'}`)
                     // No fallback, per user request. 
                 }
@@ -461,9 +483,14 @@ export function useAgent() {
                         isSettlement: true
                     })
                     settleSuccess = true
-                } catch (err) {
-                    console.error("Real settlement failed:", err)
-                    addLog('error', `❌ Settlement rejected.`)
+                } catch (e: any) {
+                    console.error("Settlement rejected", e)
+                    if (e.message && (e.message.includes('User rejected') || e.message.includes('denied'))) {
+                        addLog('error', '❌ Settlement Cancelled by User')
+                        setState('IDLE')
+                        return
+                    }
+                    addLog('info', `⚠️ Falling back to Gasless Settlement Simulation...`)
                 }
             }
 

@@ -24,11 +24,11 @@ import { LeftSidebar } from '@/components/left-sidebar'
 import { ItemSelector, MOCK_ITEMS, Item } from '@/components/item-selector'
 import { AgentSelector, AGENT_PERSONAS, AgentPersona } from '@/components/agent-selector'
 import { NegotiationView } from '@/components/negotiation-view'
-import { useAgent } from '@/hooks/useAgent'
+import { useAgent, AgentLog } from '@/hooks/useAgent'
 import { useMultiAgent } from '@/hooks/useMultiAgent'
 import { useVoiceInput } from '@/hooks/useVoiceInput'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Sparkles, Mic, Shield, Cpu, Zap, Globe, ArrowLeft, Users, User, FileJson, CheckCircle2, X as XIcon, Lock as LockIcon, ShieldCheck, ChevronLeft, Volume2, Wallet, RefreshCw, Loader2, Menu, History, Box, Github, Code } from 'lucide-react'
+import { Sparkles, Mic, Shield, Cpu, Zap, Globe, ArrowLeft, Users, User, FileJson, CheckCircle2, X as XIcon, Lock as LockIcon, ShieldCheck, ChevronLeft, Volume2, Wallet, RefreshCw, Loader2, Menu, History, Box, Github, Code, ExternalLink } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 
@@ -55,6 +55,7 @@ export interface Receipt {
     settlementHash: string // AP2 Terminology
     status: 'settled'
   }
+  logs: AgentLog[]
 }
 
 // ─────────────── App Constants ───────────────
@@ -323,7 +324,8 @@ export default function Home() {
         chainId: 103698795,
         settlementHash: realHash || `0x${Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('')}`,
         status: 'settled'
-      }
+      },
+      logs: mode === '1v1' ? logs : agents.flatMap(a => a.logs).sort((a, b) => a.timestamp - b.timestamp)
     }
     setReceipt(newReceipt)
     setCompletedDeals(prev => [newReceipt, ...prev])
@@ -341,10 +343,17 @@ export default function Home() {
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
   }
-  const handleCloseReceipt = () => {
-    setShowReceipt(false)
-    resetAgent()
-    if (mode === '1v1') setObjective('')
+  const handleCloseReceipt = (targetReceipt?: Receipt) => {
+    if (targetReceipt) {
+      setReceipt(targetReceipt)
+      setShowReceipt(true)
+    } else {
+      setShowReceipt(false)
+      setReceipt(null)
+      resetAgent()
+      resetBattle()
+      if (mode === '1v1') setObjective('')
+    }
   }
   useEffect(() => {
     const hasLaunched = localStorage.getItem('hasLaunched')
@@ -380,6 +389,7 @@ export default function Home() {
       }
 
       setIsAuthorizing(true)
+      setReceipt(null)
       try {
         setTimeout(() => {
           setIsAuthorizing(false)
@@ -698,7 +708,6 @@ export default function Home() {
                   </div>
                   <div className="flex flex-col">
                     <h1 className="font-black text-xs tracking-tighter text-white">STEALTHBID</h1>
-                    <p className="text-[8px] text-white/20 font-mono tracking-widest uppercase">Autonomous Core</p>
                   </div>
                 </div>
               </div>
@@ -708,7 +717,7 @@ export default function Home() {
                 <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10">
                   <Users className="w-3 h-3 text-white/40" />
                   <span className="text-[10px] font-bold text-white/60">Agents</span>
-                  <span className="text-[10px] font-black text-white">6</span>
+                  <span className="text-[10px] font-black text-white">{agentsList.length}</span>
                 </div>
                 <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10">
                   <Zap className="w-3 h-3 text-cyan-400" />
@@ -765,9 +774,9 @@ export default function Home() {
               <AnimatePresence>
                 {showMobileLeft && (
                   <motion.div
-                    initial={{ x: -280 }}
+                    initial={{ x: '-100%' }}
                     animate={{ x: 0 }}
-                    exit={{ x: -280 }}
+                    exit={{ x: '-100%' }}
                     transition={{ type: 'spring', damping: 25, stiffness: 200 }}
                     className="fixed inset-0 z-[100] lg:hidden flex"
                   >
@@ -779,6 +788,12 @@ export default function Home() {
                       className="absolute inset-0 bg-black/60 backdrop-blur-sm"
                     />
                     <div className="relative h-full w-[90vw] max-w-sm shadow-2xl">
+                      <button
+                        onClick={() => setShowMobileLeft(false)}
+                        className="absolute top-4 right-4 z-50 p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white/50 hover:text-white transition-colors"
+                      >
+                        <XIcon className="w-5 h-5" />
+                      </button>
                       <LeftSidebar
                         mode={mode}
                         setMode={setMode}
@@ -853,10 +868,10 @@ export default function Home() {
                       {selectedItem ? (
                         <NegotiationView
                           agents={agents}
-                          targetItem={selectedItem}
+                          targetItem={selectedItem || items[0]}
                           round={round}
                           onSettle={handleSettle}
-                          isSettled={!!receipt || isDecrypting}
+                          isSettled={!!winner}
                         />
                       ) : (
                         <div className="flex-1 flex flex-col items-center justify-center h-full text-center opacity-20 p-6">
@@ -913,15 +928,16 @@ export default function Home() {
                 <EventSidebar
                   logs={mode === '1v1' ? logs : agents.flatMap(a => a.logs)}
                   deals={completedDeals}
+                  onClose={handleCloseReceipt}
                 />
               </div>
 
               <AnimatePresence>
                 {showMobileRight && (
                   <motion.div
-                    initial={{ x: 280 }}
+                    initial={{ x: '100%' }}
                     animate={{ x: 0 }}
-                    exit={{ x: 280 }}
+                    exit={{ x: '100%' }}
                     transition={{ type: 'spring', damping: 25, stiffness: 200 }}
                     className="fixed inset-0 z-[100] xl:hidden flex justify-end"
                   >
@@ -933,10 +949,16 @@ export default function Home() {
                       className="absolute inset-0 bg-black/60 backdrop-blur-sm"
                     />
                     <div className="relative h-full w-[90vw] max-w-sm shadow-2xl">
+                      <button
+                        onClick={() => setShowMobileRight(false)}
+                        className="absolute top-4 right-4 z-50 p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white/50 hover:text-white transition-colors"
+                      >
+                        <XIcon className="w-5 h-5" />
+                      </button>
                       <EventSidebar
                         logs={mode === '1v1' ? logs : agents.flatMap(a => a.logs)}
                         deals={completedDeals}
-                        onClose={() => setShowMobileRight(false)}
+                        onClose={handleCloseReceipt}
                       />
                     </div>
                   </motion.div>
@@ -945,7 +967,7 @@ export default function Home() {
             </div>
 
             <footer className="h-8 border-t border-white/5 bg-black/60 px-6 flex items-center justify-between text-[10px] font-mono uppercase tracking-widest text-white/20">
-              <span>SF_AGENT_HACKATHON_2026</span>
+              <span></span>
               <span className="hidden md:inline">SKALE • BITE_V2 • x402 • GEMINI</span>
             </footer>
           </motion.div>
@@ -954,67 +976,92 @@ export default function Home() {
 
       <AnimatePresence>
         {showReceipt && receipt && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-md p-4">
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-[#1a1b26] rounded-2xl border border-white/10 w-full max-w-2xl overflow-hidden relative shadow-2xl">
-              <div className="p-6 border-b border-white/5 flex justify-between items-center">
-                <h3 className="text-xl font-bold">Proof of Settlement</h3>
-                <button onClick={handleCloseReceipt} className="p-2 hover:bg-white/10 rounded-lg"><XIcon className="w-5 h-5 text-white/50" /></button>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-xl p-4">
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-[#0a0a0c] rounded-3xl border border-white/10 w-full max-w-2xl overflow-hidden relative shadow-[0_0_100px_rgba(79,70,229,0.2)]">
+              {/* Decorative Gradients */}
+              <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/20 rounded-full blur-[80px] pointer-events-none" />
+              <div className="absolute bottom-0 left-0 w-64 h-64 bg-cyan-500/10 rounded-full blur-[80px] pointer-events-none" />
+
+              <div className="p-8 border-b border-white/5 flex justify-between items-center relative z-10">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-green-500/10 rounded-xl border border-green-500/20">
+                    <CheckCircle2 className="w-6 h-6 text-green-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-black uppercase tracking-tight text-white">Proof of Settlement</h3>
+                    <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Transaction Finalized on SKALE</p>
+                  </div>
+                </div>
+                <button onClick={() => handleCloseReceipt()} className="p-2 hover:bg-white/10 rounded-xl transition-colors group">
+                  <XIcon className="w-5 h-5 text-white/30 group-hover:text-white" />
+                </button>
               </div>
-              <div className="p-8 space-y-6">
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="p-4 bg-white/5 rounded-xl flex items-center justify-between">
-                    <div>
-                      <label className="text-[10px] text-white/30 uppercase block mb-1">Standard</label>
-                      <p className="font-bold text-indigo-400">x402 Mandate</p>
+
+              <div className="p-8 space-y-6 relative z-10">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-5 bg-white/[0.03] border border-white/5 rounded-2xl flex flex-col justify-between h-24 group hover:bg-white/[0.05] transition-colors">
+                    <div className="flex justify-between items-start">
+                      <label className="text-[9px] font-black text-white/30 uppercase tracking-widest">Protocol</label>
+                      <div className="px-1.5 py-0.5 rounded bg-indigo-500/20 border border-indigo-500/20 text-[7px] font-black text-indigo-300 uppercase">
+                        Gasless Verified
+                      </div>
                     </div>
-                    <div className="px-2 py-0.5 rounded bg-indigo-500/10 border border-indigo-500/20 text-[8px] font-black text-indigo-400 uppercase">
-                      Gasless Verified
+                    <p className="font-bold text-lg text-white">x402 Mandate</p>
+                  </div>
+
+                  <div className="p-5 bg-green-500/[0.05] border border-green-500/10 rounded-2xl flex flex-col justify-between h-24 group hover:bg-green-500/[0.08] transition-colors">
+                    <label className="text-[9px] font-black text-green-400/50 uppercase tracking-widest">Final Settlement</label>
+                    <p className="font-black text-2xl text-green-400 font-mono tracking-tighter">{receipt.cartMandate?.finalPrice || '0.00'} sFUEL</p>
+                  </div>
+
+                  <div className="p-5 bg-white/[0.03] border border-white/5 rounded-2xl col-span-2 group hover:bg-white/[0.05] transition-colors">
+                    <label className="text-[9px] font-black text-white/30 uppercase tracking-widest block mb-2">Acquired Target</label>
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center border border-indigo-500/30">
+                        <Box className="w-4 h-4 text-indigo-300" />
+                      </div>
+                      <p className="font-bold text-white text-lg">{receipt.intentMandate?.target || 'Unknown Target'}</p>
                     </div>
                   </div>
-                  <div className="p-4 bg-white/5 rounded-xl">
-                    <label className="text-[10px] text-white/30 uppercase block mb-1">Final Price</label>
-                    <p className="font-bold text-green-400 font-mono">{receipt.cartMandate.finalPrice} sFUEL</p>
-                  </div>
-                  <div className="p-4 bg-white/5 rounded-xl">
-                    <label className="text-[10px] text-white/30 uppercase block mb-1">Target</label>
-                    <p className="font-bold">{receipt.intentMandate.target}</p>
-                  </div>
-                  <div className="p-4 bg-white/5 rounded-xl col-span-2">
-                    <div className="flex flex-col gap-1 overflow-hidden">
-                      <span className="text-[10px] text-white/40 uppercase font-black tracking-tighter truncate">Settlement Hash</span>
+
+                  <div className="p-5 bg-black/40 border border-white/5 rounded-2xl col-span-2">
+                    <div className="flex flex-col gap-2">
+                      <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em]">Settlement Hash</span>
                       <a
-                        href={`https://base-sepolia-testnet-explorer.skalenodes.com:10032/tx/${receipt.payment.settlementHash}`}
+                        href={`https://base-sepolia-testnet-explorer.skalenodes.com:10032/tx/${receipt.payment?.settlementHash}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="font-mono text-[9px] text-indigo-400 hover:text-indigo-300 truncate transition-colors flex items-center gap-1"
+                        className="font-mono text-[10px] text-indigo-400 hover:text-indigo-300 truncate transition-colors flex items-center gap-2 p-2 rounded-lg hover:bg-indigo-500/10"
                       >
-                        {receipt.payment.settlementHash}
-                        <Globe className="w-2.5 h-2.5" />
+                        <Globe className="w-3 h-3 flex-shrink-0" />
+                        {receipt.payment?.settlementHash || 'Pending...'}
+                        <ExternalLink className="w-3 h-3 flex-shrink-0 opacity-50" />
                       </a>
                     </div>
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-3">
+
+                <div className="grid grid-cols-3 gap-3 pt-2">
                   <button
-                    onClick={() => window.open(`https://base-sepolia-testnet-explorer.skalenodes.com:10032/tx/${receipt.payment.settlementHash}`, '_blank')}
-                    className="py-3 bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-400/30 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(79,70,229,0.2)]"
+                    onClick={() => window.open(`https://base-sepolia-testnet-explorer.skalenodes.com:10032/tx/${receipt.payment?.settlementHash}`, '_blank')}
+                    className="py-4 bg-indigo-600 hover:bg-indigo-500 text-white border-t border-indigo-400/20 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(79,70,229,0.3)] hover:scale-[1.02] active:scale-95"
                   >
                     <Globe className="w-3 h-3 text-white" />
-                    VERIFY
+                    Verify
                   </button>
                   <button
                     onClick={() => handleDownloadReceipt(receipt)}
-                    className="py-3 bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2"
+                    className="py-4 bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95"
                   >
-                    <FileJson className="w-3 h-3 text-indigo-400" />
+                    <FileJson className="w-3 h-3 text-white/50" />
                     JSON
                   </button>
                   <button
-                    onClick={handleCloseReceipt}
-                    className="py-3 bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2"
+                    onClick={() => handleCloseReceipt()}
+                    className="py-4 bg-white/5 hover:bg-green-500/10 text-white hover:text-green-400 border border-white/10 hover:border-green-500/30 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95"
                   >
-                    <RefreshCw className="w-3 h-3 text-green-400" />
-                    NEW
+                    <RefreshCw className="w-3 h-3" />
+                    New
                   </button>
                 </div>
               </div>
@@ -1105,6 +1152,6 @@ export default function Home() {
           </motion.div>
         )}
       </AnimatePresence>
-    </main>
+    </main >
   )
 }

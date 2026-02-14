@@ -52,7 +52,7 @@ export function NegotiationView({ agents, targetItem, round, onSettle, isSettled
                     </div>
                     <div className="pt-0.5">
                         <div className="flex flex-wrap items-center gap-2 md:gap-4 mb-1 md:mb-2">
-                            <h2 className="text-xl md:text-3xl font-black uppercase tracking-tighter text-white">{targetItem.name}</h2>
+                            <h2 className="text-lg md:text-2xl font-black uppercase tracking-tighter text-white">{targetItem.name}</h2>
                             <span className="px-2 py-0.5 md:px-3 md:py-1 rounded-lg bg-cyan-500/20 text-cyan-400 text-[8px] md:text-[10px] font-black uppercase tracking-widest border border-cyan-500/20">
                                 {targetItem.rarity || 'RARE'}
                             </span>
@@ -116,8 +116,8 @@ export function NegotiationView({ agents, targetItem, round, onSettle, isSettled
                                         </div>
 
                                         <div className={cn(
-                                            "p-3 md:p-4 rounded-2xl border text-[10px] md:text-xs relative leading-relaxed",
-                                            log.type === 'thought' ? "bg-indigo-500/5 border-indigo-500/10 text-indigo-300 italic opacity-60" :
+                                            "p-3 md:p-4 rounded-2xl border text-xs md:text-sm relative leading-relaxed font-medium",
+                                            log.type === 'thought' ? "bg-indigo-500/5 border-indigo-500/10 text-indigo-300 italic opacity-80" :
                                                 log.type === 'action' ? (
                                                     log.agent.persona.id === agents[0].persona.id
                                                         ? "bg-indigo-500/10 border-indigo-500/20 text-white rounded-tl-none shadow-[0_4px_15px_rgba(79,70,229,0.1)]"

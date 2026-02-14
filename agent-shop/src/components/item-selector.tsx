@@ -79,7 +79,7 @@ export function ItemSelector({ items, selectedItem, onSelect, onDelete }: ItemSe
                             whileHover={{ x: 4 }}
                             whileTap={{ scale: 0.98 }}
                             className={cn(
-                                "relative w-full p-3 rounded-2xl text-left border transition-all duration-300 group overflow-hidden",
+                                "relative w-full p-3 pr-10 rounded-2xl text-left border transition-all duration-300 group overflow-hidden",
                                 isSelected
                                     ? "bg-indigo-500/10 border-indigo-500/30 shadow-[0_8px_20px_rgba(79,70,229,0.1)]"
                                     : "bg-white/[0.02] border-white/5 hover:bg-white/[0.05] hover:border-white/10"
@@ -97,7 +97,7 @@ export function ItemSelector({ items, selectedItem, onSelect, onDelete }: ItemSe
                                         e.stopPropagation()
                                         onDelete(item.id)
                                     }}
-                                    className="absolute right-2 top-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 hover:bg-red-500/20 rounded-lg text-white/20 hover:text-red-400"
+                                    className="absolute right-2 bottom-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 hover:bg-red-500/20 rounded-lg text-white/20 hover:text-red-400"
                                 >
                                     <Trash2 className="w-3.5 h-3.5" />
                                 </div>
