@@ -32,19 +32,19 @@ import { Sparkles, Mic, Shield, Cpu, Zap, Globe, ArrowLeft, Users, User, FileJso
 import { cn } from '@/lib/utils'
 
 
-interface Receipt {
+export interface Receipt {
   id: string
-  timestamp: string
+  timestamp: string // ISO
   intentMandate: {
-    type: 'purchase_order'
-    target: string
-    maxBudget?: number
+    type: 'purchase_order' | 'data_request'
+    target: string // The objective or product
+    maxBudget: string // In sFUEL or native
   }
   cartMandate: {
     provider: string
     item: string
-    finalPrice: number
-    currency: 'sFUEL' | 'USDC'
+    finalPrice: string
+    currency: string
     agentId: string
   }
   authorizationToken: string // AP2 Policy #42
@@ -79,6 +79,7 @@ export default function Home() {
   // Receipt State
   const [showReceipt, setShowReceipt] = useState(false)
   const [receipt, setReceipt] = useState<Receipt | null>(null)
+  const [completedDeals, setCompletedDeals] = useState<Receipt[]>([])
 
   // Hero Prize State
   const [isAuthorizing, setIsAuthorizing] = useState(false)
@@ -282,12 +283,12 @@ export default function Home() {
       intentMandate: {
         type: 'purchase_order',
         target: selectedItem.name,
-        maxBudget: selectedItem.basePrice
+        maxBudget: selectedItem.basePrice.toString()
       },
       cartMandate: {
         provider: (selectedItem as any).provider || 'Nebula Cloud',
         item: selectedItem.name,
-        finalPrice: winner.currentBid,
+        finalPrice: winner.currentBid.toString(),
         currency: 'sFUEL',
         agentId: winner.persona.name
       },
@@ -301,6 +302,7 @@ export default function Home() {
       }
     }
     setReceipt(newReceipt)
+    setCompletedDeals(prev => [newReceipt, ...prev])
     setShowReceipt(true)
   }
 
@@ -812,7 +814,10 @@ export default function Home() {
 
               {/* Persistent Right Sidebar */}
               <div className="hidden xl:block w-80 h-full">
-                <EventSidebar logs={mode === '1v1' ? logs : agents.flatMap(a => a.logs)} />
+                <EventSidebar
+                  logs={mode === '1v1' ? logs : agents.flatMap(a => a.logs)}
+                  deals={completedDeals}
+                />
               </div>
             </div>
 
