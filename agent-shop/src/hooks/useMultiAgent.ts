@@ -97,35 +97,22 @@ export function useMultiAgent() {
                     if (currentRound <= maxRounds) {
                         const randomAction = Math.random()
 
-                        // Trust & Safety: Simulate Budget Guardrail Failure (15% chance in later rounds)
-                        if (currentRound >= 4 && Math.random() > 0.85 && agent.status !== 'dropped') {
+                        // Trust & Safety: Lower drop chance for demo reliability
+                        if (currentRound >= 4 && Math.random() > 0.95 && agent.status !== 'dropped') {
                             newLog.type = 'error'
                             newLog.content = `🛑 Safety Guardrail: Budget limit nearing. Halting current path.`
                             status = 'dropped'
-
-                            // Pivot reasoning for Hero Prize
-                            setTimeout(() => {
-                                setAgents(prev => prev.map((a, i) => {
-                                    if (i !== index) return a
-                                    return {
-                                        ...a,
-                                        logs: [...a.logs, {
-                                            id: crypto.randomUUID(),
-                                            timestamp: Date.now(),
-                                            type: 'thought',
-                                            content: `💡 Pivot: Strategy limit reached. Re-evaluating alternatives for affordability...`
-                                        }]
-                                    }
-                                }))
-                            }, 1000)
-                        } else if (randomAction > 0.3) {
+                            // ... stay dropped ...
+                        } else if (randomAction > 0.1) { // 90% chance to act
                             // Place a bid
                             const base = item.basePrice
                             // Random bid around base price, decreasing slightly each round (reverse auction)
                             const variance = (Math.random() * 0.1) - 0.05 // +/- 5%
-                            const roundMultiplier = 1 - (currentRound * 0.03) // Price drops over rounds
+                            const roundMultiplier = 1 - (currentRound * 0.04) // Price drops faster for dramatic effect
 
-                            bid = Math.floor(base * roundMultiplier * (1 + variance) * 100) / 100
+                            // Ensure bid is never 0 and is around base price
+                            const newBid = Math.floor(base * roundMultiplier * (1 + variance) * 100) / 100
+                            bid = newBid > 0 ? newBid : base
 
                             // Conversational Messages based on Persona
                             const messages = {
@@ -154,7 +141,7 @@ export function useMultiAgent() {
                             newLog.content = personaMessages[Math.floor(Math.random() * personaMessages.length)]
                             status = 'bidding'
                         } else {
-                            newLog.content = "Holding position. Observing competitor patterns..."
+                            newLog.content = "Observing competitor patterns..."
                             status = 'holding'
                         }
                     } else {
@@ -221,7 +208,7 @@ export function useMultiAgent() {
                         id: crypto.randomUUID(),
                         timestamp: Date.now(),
                         type: 'info',
-                        content: `🔓 Offer Revealed: ${a.currentBid} SKL`
+                        content: `🔓 Offer Revealed: ${a.currentBid > 0 ? a.currentBid.toFixed(2) : highestBid.toFixed(2)} sFUEL`
                     }]
                 }
             })

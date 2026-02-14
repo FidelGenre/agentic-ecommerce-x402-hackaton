@@ -138,7 +138,17 @@ export default function Home() {
   // Direct SDK Integration for "Coinbase Payment"
   // Robust Deposit Handler
   // Open Modal First (Safety Step)
-  // Open Modal First (Safety Step)
+  // Open Modal First (Safety Step)  // Auto-trigger settlement for Battle Royale winner
+  useEffect(() => {
+    if (mode === 'multi' && winner && !isAuthorizing && !receipt && !isUnlockingData && !isDecrypting) {
+      // Small delay for drama/reveal
+      const timer = setTimeout(() => {
+        handleSettle()
+      }, 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [winner, mode, receipt, isAuthorizing, isUnlockingData, isDecrypting])
+
   const openFundingModal = () => {
     setActiveTab('deposit')
     setErrorMessage(null)
@@ -549,7 +559,7 @@ export default function Home() {
                 transition={{ delay: 0.3 }}
                 className="text-7xl md:text-8xl font-black mb-6 tracking-tight leading-none"
               >
-                STEALTHBID <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-cyan-400 to-purple-400">AGENT.OS</span>
+                STEALTHBID
               </motion.h1>
 
               <motion.p
@@ -573,7 +583,7 @@ export default function Home() {
                   className="px-12 py-5 bg-white text-black font-black rounded-2xl text-lg shadow-[0_0_50px_rgba(255,255,255,0.15)] hover:scale-105 active:scale-95 transition-all flex items-center gap-3"
                 >
                   <Zap className="w-5 h-5 fill-black" />
-                  LAUNCH AGENT OS
+                  LAUNCH APP
                 </button>
                 <div className="flex -space-x-3">
                   {[1, 2, 3, 4].map((i) => (
@@ -642,7 +652,7 @@ export default function Home() {
                     <Globe className="w-5 h-5 text-indigo-400" />
                   </div>
                   <div>
-                    <h1 className="font-black text-xs tracking-tighter text-white">STEALTHBID <span className="text-white/40">OS</span></h1>
+                    <h1 className="font-black text-xs tracking-tighter text-white">STEALTHBID</h1>
                     <p className="text-[8px] text-white/20 font-mono tracking-widest uppercase">Autonomous Core</p>
                   </div>
                 </div>
@@ -796,9 +806,20 @@ export default function Home() {
               </div>
             </div>
 
-            <footer className="h-8 border-t border-white/5 bg-black/60 px-6 flex items-center justify-between text-[10px] text-white/20 font-mono uppercase tracking-widest">
-              <span>SF_AGENT_HACKATHON_2026</span>
-              <span>SKALE • BITE_V2 • x402 • GEMINI</span>
+            <footer className="h-8 border-t border-white/5 bg-black/60 px-6 flex items-center justify-between text-[10px] font-mono uppercase tracking-widest">
+              <div className="flex items-center gap-4">
+                <span className="text-white/20">SF_AGENT_HACKATHON_2026</span>
+                <a
+                  href="https://github.com/FidelGenre/agentic-ecommerce-x402-hackaton"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-indigo-400/60 hover:text-indigo-400 transition-colors flex items-center gap-1.5"
+                >
+                  <Globe className="w-3 h-3" />
+                  Source Code
+                </a>
+              </div>
+              <span className="text-white/10 hidden md:inline">SKALE • BITE_V2 • x402 • GEMINI</span>
             </footer>
           </motion.div>
         )}
@@ -832,7 +853,12 @@ export default function Home() {
                     <span className="text-purple-400">{receipt.authorizationToken}</span>
                   </div>
                 </div>
-                <button onClick={() => setShowReceipt(false)} className="w-full py-4 bg-white text-black font-bold rounded-xl shadow-lg">Verify on Chain</button>
+                <button
+                  onClick={() => window.open(`${skaleBiteSandbox.blockExplorers.default.url}/tx/${receipt.payment.settlementHash}`, '_blank')}
+                  className="w-full py-4 bg-white text-black font-bold rounded-xl shadow-lg hover:bg-gray-100 transition-all active:scale-[0.98]"
+                >
+                  Verify on Chain
+                </button>
               </div>
             </motion.div>
           </motion.div>
