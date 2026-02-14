@@ -351,6 +351,14 @@ export default function Home() {
       // Start Battle
       if (!selectedItem || selectedAgentIds.length < 2) return
 
+      // Reset flow flags for a fresh negotiation
+      setReceipt(null)
+      setShowReceipt(false)
+      setIsAuthorized(false)
+      setIsUnlockingData(false)
+      setIsDecrypting(false)
+      setErrorMessage(null)
+
 
 
       // CHECK TREASURY
@@ -398,6 +406,7 @@ export default function Home() {
   }
 
   const handleSettle = () => {
+    if (isDecrypting || receipt) return
     setIsDecrypting(true)
     setAuditLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] BITE Phase II: Validators reaching consensus on decryption...`])
 
@@ -760,6 +769,7 @@ export default function Home() {
                           agents={agents}
                           targetItem={selectedItem}
                           round={round}
+                          onSettle={handleSettle}
                         />
                       ) : (
                         <div className="flex-1 flex flex-col items-center justify-center h-[500px] text-center opacity-20">

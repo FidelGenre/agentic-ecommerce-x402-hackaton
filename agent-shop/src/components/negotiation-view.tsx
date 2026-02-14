@@ -19,12 +19,14 @@ interface NegotiationViewProps {
     agents: BattleAgent[]
     targetItem: Item
     round: number
+    onSettle?: () => void
 }
 
-export function NegotiationView({ agents, targetItem, round }: NegotiationViewProps) {
+export function NegotiationView({ agents, targetItem, round, onSettle }: NegotiationViewProps) {
     // Find current best bid
     const bestBid = Math.max(...agents.map(a => a.currentBid))
     const leader = agents.find(a => a.currentBid === bestBid)
+    const winner = agents.find(a => a.status === 'winner')
 
     return (
         <div className="w-full flex flex-col h-full">
@@ -177,6 +179,28 @@ export function NegotiationView({ agents, targetItem, round }: NegotiationViewPr
                     ))}
                 </div>
             </div>
+
+            {/* Victory / Settlement Action */}
+            <AnimatePresence>
+                {winner && onSettle && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="mt-8 flex flex-col items-center gap-4"
+                    >
+                        <div className="p-1 px-4 rounded-full bg-green-500/10 border border-green-500/20 text-green-400 text-[10px] font-black uppercase tracking-[0.3em] animate-pulse">
+                            Negotiation Outcome Achieved
+                        </div>
+                        <button
+                            onClick={onSettle}
+                            className="bg-green-500 hover:bg-green-400 text-black px-12 py-4 rounded-2xl font-black text-lg transition-all shadow-[0_0_50px_rgba(34,197,94,0.3)] hover:scale-105 active:scale-95 flex items-center gap-3"
+                        >
+                            <Trophy className="w-5 h-5" />
+                            CONFIRM DEAL & SETTLE
+                        </button>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     )
 }
