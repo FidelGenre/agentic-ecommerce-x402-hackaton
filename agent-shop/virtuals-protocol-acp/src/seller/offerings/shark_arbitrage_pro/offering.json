@@ -1,0 +1,13 @@
+{
+  "name": "shark_arbitrage_pro",
+  "description": "Executive-tier arbitrage signaling. Provides real-time, executable spreads across SKALE BITE V2 and Base liquidity pools with 98% confidence intervals.",
+  "jobFee": 0.50,
+  "jobFeeType": "fixed",
+  "slaMinutes": 15,
+  "requiredFunds": false,
+  "requirement": {
+    "network": "string",
+    "min_profit_pct": "number"
+  },
+  "deliverable": "Professional Arbitrage Signal Data"
+}
