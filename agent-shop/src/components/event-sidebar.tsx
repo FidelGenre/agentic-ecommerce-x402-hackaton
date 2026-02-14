@@ -1,4 +1,5 @@
 
+import { useRef, useEffect } from 'react'
 import { AgentLog } from '@/hooks/useAgent'
 import { Receipt } from '@/app/page'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -13,6 +14,14 @@ interface EventSidebarProps {
 
 export function EventSidebar({ logs, deals, onClose }: EventSidebarProps) {
     const reversedLogs = [...logs].reverse().slice(0, 50)
+    const logEndRef = useRef<HTMLDivElement>(null)
+
+    // Auto-scroll logic
+    useEffect(() => {
+        if (logEndRef.current) {
+            logEndRef.current.scrollIntoView({ behavior: 'smooth' })
+        }
+    }, [logs])
 
     return (
         <aside className="h-full flex flex-col border-l border-white/5 bg-[#0a0a0c] w-full overflow-hidden relative">
@@ -39,9 +48,9 @@ export function EventSidebar({ logs, deals, onClose }: EventSidebarProps) {
                 <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
                     <AnimatePresence initial={false}>
                         {reversedLogs.length > 0 ? (
-                            reversedLogs.map((log) => (
+                            reversedLogs.map((log, index) => (
                                 <motion.div
-                                    key={log.id}
+                                    key={log.id || `${log.timestamp}-${index}`}
                                     initial={{ opacity: 0, x: 20 }}
                                     animate={{ opacity: 1, x: 0 }}
                                     className="relative pl-4 border-l border-white/5 pb-4 last:pb-0"
@@ -69,7 +78,7 @@ export function EventSidebar({ logs, deals, onClose }: EventSidebarProps) {
 
                                     {log.metadata?.hash && (
                                         <a
-                                            href={`https://base-sepolia-testnet-explorer.skalenodes.com/tx/${log.metadata.hash}`}
+                                            href={`https://base-sepolia-testnet-explorer.skalenodes.com:10032/tx/${log.metadata.hash}`}
                                             target="_blank"
                                             rel="noreferrer"
                                             className="mt-2 flex items-center gap-1.5 text-[9px] text-white/30 hover:text-white transition-colors w-fit border border-white/10 px-2 py-0.5 rounded"
@@ -87,6 +96,7 @@ export function EventSidebar({ logs, deals, onClose }: EventSidebarProps) {
                                 <p className="text-[9px] max-w-[150px] text-center">Smart contracts auto-execute when agents reach a deal</p>
                             </div>
                         )}
+                        <div ref={logEndRef} />
                     </AnimatePresence>
                 </div>
             </div>

@@ -98,9 +98,9 @@ export function NegotiationView({ agents, targetItem, round, onSettle, isSettled
                             {agents
                                 .flatMap(agent => agent.logs.map(log => ({ ...log, agent })))
                                 .sort((a, b) => a.timestamp - b.timestamp)
-                                .map((log) => (
+                                .map((log, index) => (
                                     <motion.div
-                                        key={log.id}
+                                        key={`${log.id}-${log.agent.persona.id}-${index}`}
                                         initial={{ opacity: 0, y: 10, scale: 0.98 }}
                                         animate={{ opacity: 1, y: 0, scale: 1 }}
                                         className={cn(

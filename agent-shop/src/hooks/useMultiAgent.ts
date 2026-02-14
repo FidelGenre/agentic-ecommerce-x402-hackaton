@@ -18,12 +18,20 @@ export function useMultiAgent() {
     const startBattle = useCallback((selectedPersonas: AgentPersona[], item: Item) => {
         // Initialize Agents
         const initialAgents: BattleAgent[] = selectedPersonas.map((p, index) => {
-            const initialLogs: AgentLog[] = [{
-                id: crypto.randomUUID(),
-                timestamp: Date.now(),
-                type: 'info',
-                content: `Agent ${p.name} initialized.`
-            }]
+            const initialLogs: AgentLog[] = [
+                {
+                    id: `commander-launch-${p.id}`,
+                    timestamp: Date.now() - 500,
+                    type: 'info',
+                    content: `🛰️ Commander: Deploying multi-agent grid for objective: "${item.name}". Authorized via BITE Protocol.`
+                },
+                {
+                    id: crypto.randomUUID(),
+                    timestamp: Date.now(),
+                    type: 'info',
+                    content: `Agent ${p.name} initialized.`
+                }
+            ]
 
             // Distribute responsibilities for demo effectiveness
             if (index === 0) {

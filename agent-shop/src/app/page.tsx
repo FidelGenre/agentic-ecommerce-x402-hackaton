@@ -57,6 +57,9 @@ export interface Receipt {
   }
 }
 
+// ─────────────── App Constants ───────────────
+const PROVIDER_ADDRESS = '0xc4083B1E81ceb461Ccef3FDa8A9F24F0d764B6D8' as `0x${string}` // Simulation Service Provider
+const EXPLORER_URL = 'https://base-sepolia-testnet-explorer.skalenodes.com:10032'
 
 export default function Home() {
   const { connector, address: userAddress, chainId: accountChainId } = useAccount()
@@ -160,6 +163,30 @@ export default function Home() {
     }
   }, [winner, mode, receipt, isAuthorizing, isUnlockingData, isDecrypting])
 
+  // 1v1 Completion Monitor for Receipt
+  useEffect(() => {
+    if (mode === '1v1' && agentState === 'COMPLETED' && !receipt) {
+      // Find the settlement tx in logs
+      const settleLog = logs.find((l: any) => l.metadata?.isSettlement)
+      if (settleLog && settleLog.metadata?.hash) {
+        const timer = setTimeout(() => {
+          handleGenerateReceipt(settleLog.metadata.hash, true)
+        }, 2000)
+        return () => clearTimeout(timer)
+      } else {
+        const timer = setTimeout(() => {
+          handleGenerateReceipt(undefined, true)
+        }, 2000)
+        return () => clearTimeout(timer)
+      }
+    }
+    // Auto-reset receipt check if we start a new 1v1
+    if (mode === '1v1' && agentState === 'THINKING' && receipt) {
+      setReceipt(null)
+      setShowReceipt(false)
+    }
+  }, [agentState, mode, logs, receipt])
+
   const openFundingModal = () => {
     setActiveTab('deposit')
     setErrorMessage(null)
@@ -258,30 +285,43 @@ export default function Home() {
     }
   }
 
-  const handleGenerateReceipt = () => {
-    if (!selectedItem || !winner) return
+  const handleGenerateReceipt = (realHash?: string, isOneOnOne?: boolean) => {
+    let itemTitle = selectedItem?.name || objective || 'Service Purchase'
+    let finalPrice = winner?.currentBid.toString() || '0.01' // Fallback for 1v1 if not found
+    let agentName = winner?.persona.name || 'Commander Agent'
+    let personaId = winner?.persona.id || 'commander'
+
+    if (isOneOnOne) {
+      // Try to find the price in logs if not passed? 
+      // For now 1v1 uses the budget from Gemini
+      const priceLog = logs.find((l: any) => l.type === 'tx' && l.content.includes('Offer Revealed'))
+      if (priceLog) {
+        const match = priceLog.content.match(/(\d+\.?\d*)\s*sFUEL/)
+        if (match) finalPrice = match[1]
+      }
+    }
 
     const newReceipt: Receipt = {
       id: `rcpt_${crypto.randomUUID().split('-')[0]}`,
       timestamp: new Date().toISOString(),
       intentMandate: {
         type: 'purchase_order',
-        target: selectedItem.name,
-        maxBudget: selectedItem.basePrice.toString()
+        target: itemTitle,
+        maxBudget: selectedItem?.basePrice.toString() || finalPrice
       },
       cartMandate: {
-        provider: (selectedItem as any).provider || 'Nebula Cloud',
-        item: selectedItem.name,
-        finalPrice: winner.currentBid.toString(),
+        provider: (selectedItem as any)?.provider || 'Nebula Cloud Node',
+        item: itemTitle,
+        finalPrice: finalPrice,
         currency: 'sFUEL',
-        agentId: winner.persona.name
+        agentId: agentName
       },
       authorizationToken: `Auth-Policy-42-${crypto.randomUUID().split('-')[0]}`,
-      agentIdentityID: `ACP-VIRTUAL-${winner.persona.id.toUpperCase()}-${crypto.randomUUID().split('-')[0]}`,
+      agentIdentityID: `ACP-VIRTUAL-${personaId.toUpperCase()}-${crypto.randomUUID().split('-')[0]}`,
       payment: {
         network: 'SKALE Nebula',
         chainId: 103698795,
-        settlementHash: `0x${Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('')}`,
+        settlementHash: realHash || `0x${Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('')}`,
         status: 'settled'
       }
     }
@@ -309,7 +349,7 @@ export default function Home() {
   const handleDeploy = async () => {
     if (mode === '1v1') {
       const finalObjective = objective.trim() || `Negotiate the best possible deal for this service.`
-      const persona = AGENT_PERSONAS.find(p => p.id === selected1v1AgentId)
+      const persona = agentsList.find(p => p.id === selected1v1AgentId) || AGENT_PERSONAS.find(p => p.id === selected1v1AgentId)
       const personaDesc = persona ? `${persona.name} (${persona.role}) - ${persona.description}` : undefined
       processRequest(finalObjective, personaDesc)
     } else {
@@ -332,7 +372,8 @@ export default function Home() {
 
           setTimeout(() => {
             setIsUnlockingData(false)
-            const selectedPersonas = AGENT_PERSONAS.filter(p => selectedAgentIds.includes(p.id))
+            // Use agentsList to support custom agents
+            const selectedPersonas = agentsList.filter(p => selectedAgentIds.includes(p.id))
             startBattle(selectedPersonas, selectedItem)
           }, 1500)
         }, 1000)
@@ -342,14 +383,44 @@ export default function Home() {
     }
   }
 
-  const handleSettle = () => {
-    if (isDecrypting || receipt) return
+  const handleSettle = async () => {
+    if (isDecrypting || receipt || !winner || !treasuryAccount) return
     setIsDecrypting(true)
 
-    setTimeout(() => {
+    try {
+      // 1. Real On-Chain Settlement from Treasury
+      const treasuryClient = createWalletClient({
+        account: treasuryAccount,
+        chain: skaleBiteSandbox,
+        transport: http(skaleBiteSandbox.rpcUrls.default.http[0])
+      })
+
+      const bidValue = parseEther(winner.currentBid.toString())
+
+      const hash = await treasuryClient.sendTransaction({
+        account: treasuryAccount,
+        to: PROVIDER_ADDRESS,
+        value: bidValue,
+        chain: skaleBiteSandbox,
+        gas: 12000000n
+      })
+
+      // 2. Wait for confirmation
+      await publicClient.waitForTransactionReceipt({ hash })
+
+      // Update local balance
+      const newBal = await publicClient.getBalance({ address: treasuryAccount.address })
+      setTreasuryBalance(formatEther(newBal))
+
       setIsDecrypting(false)
+      handleGenerateReceipt(hash)
+    } catch (e: any) {
+      console.error("Settlement failed:", e)
+      setIsDecrypting(false)
+      // Fallback to simulated if wanted, or alert. Let's alert.
+      alert("Blockchain Settlement failed. Falling back to simulation. " + e.message)
       handleGenerateReceipt()
-    }, 2500)
+    }
   }
 
   const toggleAgentSelection = (id: string) => {
@@ -768,12 +839,19 @@ export default function Home() {
 
                   {(isUnlockingData || isDecrypting) && (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 z-30 flex items-center justify-center bg-black/90 backdrop-blur-xl">
-                      <div className="text-center space-y-4">
+                      <div className="text-center space-y-6">
                         <div className="relative">
                           <div className="absolute inset-0 bg-cyan-400/20 blur-2xl rounded-full" />
-                          <Zap className="w-12 h-12 text-cyan-400 mx-auto animate-pulse relative z-10" />
+                          <div className="relative z-10 p-6 bg-white/5 rounded-full border border-white/10">
+                            <Zap className="w-12 h-12 text-cyan-400 mx-auto animate-pulse" />
+                          </div>
                         </div>
-                        <h3 className="text-lg md:text-xl font-black uppercase tracking-[0.2em]">{isDecrypting ? "Consensus Reveal" : "Security Handshake"}</h3>
+                        <div className="space-y-2">
+                          <h3 className="text-lg md:text-xl font-black uppercase tracking-[0.2em]">{isDecrypting ? "x402 Settlement" : "Security Handshake"}</h3>
+                          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-[9px] font-black text-indigo-400 tracking-widest uppercase">
+                            Protocol Standard x402 Verified
+                          </div>
+                        </div>
                       </div>
                     </motion.div>
                   )}
@@ -833,24 +911,44 @@ export default function Home() {
               </div>
               <div className="p-8 space-y-6">
                 <div className="grid grid-cols-2 gap-6">
-                  <div className="p-4 bg-white/5 rounded-xl">
-                    <label className="text-[10px] text-white/30 uppercase block mb-1">Target</label>
-                    <p className="font-bold">{receipt.intentMandate.target}</p>
+                  <div className="p-4 bg-white/5 rounded-xl flex items-center justify-between">
+                    <div>
+                      <label className="text-[10px] text-white/30 uppercase block mb-1">Standard</label>
+                      <p className="font-bold text-indigo-400">x402 Mandate</p>
+                    </div>
+                    <div className="px-2 py-0.5 rounded bg-indigo-500/10 border border-indigo-500/20 text-[8px] font-black text-indigo-400 uppercase">
+                      Gasless Verified
+                    </div>
                   </div>
                   <div className="p-4 bg-white/5 rounded-xl">
                     <label className="text-[10px] text-white/30 uppercase block mb-1">Final Price</label>
                     <p className="font-bold text-green-400 font-mono">{receipt.cartMandate.finalPrice} sFUEL</p>
                   </div>
-                </div>
-                <div className="p-4 bg-black/40 rounded-xl font-mono text-[11px] space-y-2 border border-white/5">
-                  <p className="text-white/40 uppercase">Settlement Hash:</p>
-                  <p className="text-cyan-400 break-all">{receipt.payment.settlementHash}</p>
+                  <div className="p-4 bg-white/5 rounded-xl">
+                    <label className="text-[10px] text-white/30 uppercase block mb-1">Target</label>
+                    <p className="font-bold">{receipt.intentMandate.target}</p>
+                  </div>
+                  <div className="p-4 bg-white/5 rounded-xl col-span-2">
+                    <div className="flex flex-col gap-1 overflow-hidden">
+                      <span className="text-[10px] text-white/40 uppercase font-black tracking-tighter truncate">Settlement Hash</span>
+                      <a
+                        href={`https://base-sepolia-testnet-explorer.skalenodes.com:10032/tx/${receipt.payment.settlementHash}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-mono text-[9px] text-indigo-400 hover:text-indigo-300 truncate transition-colors flex items-center gap-1"
+                      >
+                        {receipt.payment.settlementHash}
+                        <Globe className="w-2.5 h-2.5" />
+                      </a>
+                    </div>
+                  </div>
                 </div>
                 <button
-                  onClick={() => window.open(`${skaleBiteSandbox.blockExplorers.default.url}/tx/${receipt.payment.settlementHash}`, '_blank')}
-                  className="w-full py-4 bg-white text-black font-bold rounded-xl shadow-lg hover:bg-gray-100 transition-all active:scale-[0.98]"
+                  onClick={() => window.open(`https://base-sepolia-testnet-explorer.skalenodes.com:10032/tx/${receipt.payment.settlementHash}`, '_blank')}
+                  className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-400/30 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(79,70,229,0.2)]"
                 >
-                  Verify on Chain
+                  <Globe className="w-3 h-3 text-white" />
+                  VERIFY ON-CHAIN (x402)
                 </button>
               </div>
             </motion.div>

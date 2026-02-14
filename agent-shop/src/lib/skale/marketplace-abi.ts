@@ -76,6 +76,21 @@ export const SERVICE_MARKETPLACE_ABI = [
     },
     {
         type: "function",
+        name: "services",
+        inputs: [{ name: "", type: "uint256" }],
+        outputs: [
+            { name: "provider", type: "address" },
+            { name: "name", type: "string" },
+            { name: "description", type: "string" },
+            { name: "pricePerUnit", type: "uint256" },
+            { name: "uptime", type: "uint8" },
+            { name: "rating", type: "uint8" },
+            { name: "isRegistered", type: "bool" },
+        ],
+        stateMutability: "view",
+    },
+    {
+        type: "function",
         name: "nextRequestId",
         inputs: [],
         outputs: [{ name: "", type: "uint256" }],
