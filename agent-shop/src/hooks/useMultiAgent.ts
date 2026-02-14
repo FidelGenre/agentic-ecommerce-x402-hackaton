@@ -47,6 +47,16 @@ export function useMultiAgent() {
         setLogs([]) // Clear previous
         setState('IDLE')
 
+        // Initialize Agents immediately so they appear on UI
+        const initialBids = MOCK_AGENTS.map((a, i) => ({
+            name: a.name,
+            price: 0,
+            strategy: a.strategy,
+            status: 'pending' as const,
+            score: 0
+        }))
+        setBids(initialBids)
+
         // Phase 0: Authorization
         setLogs(prev => [...prev, `🔐 Security: Verifying Treasury Mandate...`])
         await new Promise(r => setTimeout(r, 800))
@@ -90,14 +100,8 @@ export function useMultiAgent() {
             await new Promise(r => setTimeout(r, 2500))
         }
 
-        const initialBids = MOCK_AGENTS.map((a, i) => ({
-            name: a.name,
-            price: 0,
-            strategy: a.strategy,
-            status: 'pending' as const,
-            score: 0
-        }))
-        setBids(initialBids)
+        // Wait for "transfers" to complete if simulating (real ones awaited above)
+        if (!onFund) await new Promise(r => setTimeout(r, 3500))
 
         setState('ADMISSION')
         setLogs(prev => [...prev, `📢 Protocol: Battle Royale initiated for "${objective}"`])

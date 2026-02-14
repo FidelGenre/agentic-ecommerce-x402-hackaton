@@ -122,8 +122,8 @@ export default function Home() {
   const [selectedItem, setSelectedItem] = useState<Item | null>(null)
   const [selectedAgentIds, setSelectedAgentIds] = useState<string[]>([])
 
-  // New API Destructuring
-  const { state: battleState, bids: battleBids, startBattle, resetBattle } = useMultiAgent()
+  // New API Destructuring with LOGS
+  const { state: battleState, bids: battleBids, logs: battleLogs, startBattle, resetBattle } = useMultiAgent()
 
   // Compatibility Adapters
   const isBattleActive = battleState === 'BIDDING' || battleState === 'ADMISSION' || battleState === 'EXECUTING'
@@ -142,7 +142,7 @@ export default function Home() {
     },
     status: (bid.status === 'won' ? 'winner' : bid.status === 'lost' ? 'dropped' : bid.status) as any,
     currentBid: bid.price,
-    logs: [] as any[]
+    logs: [] as any[] // Logs are global now, but keep this for strict types if needed
   }))
 
   const winner = agents.find(a => a.status === 'winner') || null
@@ -1032,7 +1032,7 @@ export default function Home() {
 
               <div className="hidden xl:block w-96 h-full flex-none border-l border-white/5">
                 <EventSidebar
-                  logs={mode === '1v1' ? logs : agents.flatMap(a => a.logs)}
+                  logs={mode === '1v1' ? logs : battleLogs.map((l, i) => ({ timestamp: Date.now() + i, type: 'info', content: l } as any))}
                   deals={completedDeals}
                   onClose={handleCloseReceipt}
                 />
@@ -1062,9 +1062,9 @@ export default function Home() {
                         <XIcon className="w-5 h-5" />
                       </button>
                       <EventSidebar
-                        logs={mode === '1v1' ? logs : agents.flatMap(a => a.logs)}
+                        logs={mode === '1v1' ? logs : battleLogs.map((l, i) => ({ timestamp: Date.now() + i, type: 'info', content: l } as any))}
                         deals={completedDeals}
-                        onClose={(r) => {
+                        onClose={(r: any) => { // Fixed type inference
                           if (r) handleCloseReceipt(r)
                           setShowMobileRight(false)
                         }}
