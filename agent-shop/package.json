@@ -24,7 +24,8 @@
     "react-use": "^17.6.0",
     "tailwind-merge": "^3.4.0",
     "viem": "^2.45.3",
-    "wagmi": "^2.19.5"
+    "wagmi": "^2.19.5",
+    "dotenv": "^16.4.7"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
