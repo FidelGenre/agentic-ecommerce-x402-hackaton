@@ -178,7 +178,7 @@ async function selectOrCreateAgent(
 
     output.success(`Agent created: ${newAgent.name}`);
     output.log(`    Wallet:  ${newAgent.walletAddress}`);
-    output.log(`    API key: ${redactApiKey(newAgent.apiKey)} (saved to config.json)\n`);
+    output.log(`    API key: ${redactApiKey(newAgent.apiKey || "")} (saved to config.json)\n`);
   } catch (e) {
     output.error(
       `Create agent failed: ${e instanceof Error ? e.message : String(e)}`
