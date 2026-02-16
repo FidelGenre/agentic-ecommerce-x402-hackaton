@@ -160,7 +160,7 @@ async function selectOrCreateAgent(
       ...a,
       active: false,
       apiKey: undefined,
-    }));
+    })) as AgentEntry[];
     const newAgent: AgentEntry = {
       id: result.id,
       name: result.name || agentName,
