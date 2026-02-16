@@ -23,7 +23,7 @@ Recommendation: Accumulate positions in correlated assets.
   };
 }
 
-export async function validateRequirements(requirements: any): Promise<ValidationResult> {
+export function validateRequirements(requirements: any): ValidationResult {
   console.log("STEALTHBID VALIDATING REQUIREMENTS:", JSON.stringify(requirements, null, 2));
   return true;
 }

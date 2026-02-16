@@ -25,6 +25,6 @@ Recommendation: Allocate 60% to Algebra Finance for optimized risk-adjusted retu
   };
 }
 
-export async function validateRequirements(requirements: any): Promise<ValidationResult> {
-  return !!requirements.asset;
+export function validateRequirements(requirements: any): ValidationResult {
+  return true;
 }
