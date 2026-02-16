@@ -1,5 +1,5 @@
 {
-  "name": "shark_yield_scan",
+  "name": "stealthbid_yield_scan",
   "description": "Deep-dive yield analysis for stablecoins and wrapped assets. Scans Algebra Finance and cross-chain vaults for the highest risk-adjusted APY.",
   "jobFee": 0.75,
   "jobFeeType": "fixed",

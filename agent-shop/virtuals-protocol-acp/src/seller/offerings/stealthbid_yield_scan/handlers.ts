@@ -1,14 +1,14 @@
 import { ExecuteJobResult, ValidationResult } from "../../runtime/offeringTypes.js";
 
 export async function executeJob(requirements: any): Promise<ExecuteJobResult> {
-  console.log("🦈 Shark.Buy [YIELD] executing deep scan:", requirements);
+  console.log("STEALTHBID [YIELD] executing deep scan:", requirements);
 
   const asset = requirements.asset || "USDC";
   const risk = requirements.risk_profile || "moderate";
 
   // Simulate high-value yield data
   const report = `
-[SHARK.BUY YIELD OPTIMIZATION REPORT]
+[STEALTHBID YIELD OPTIMIZATION REPORT]
 Asset: ${asset}
 Risk Profile: ${risk}
 

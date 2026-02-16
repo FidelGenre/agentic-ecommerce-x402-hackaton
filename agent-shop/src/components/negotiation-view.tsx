@@ -71,7 +71,7 @@ export function NegotiationView({ agents, targetItem, round, onSettle, isSettled
                         Round {round}/5
                     </div>
                     <div className="text-2xl md:text-3xl font-black text-green-400 font-mono tracking-tighter">
-                        {bestBid > 0 ? bestBid.toFixed(2) : targetItem.basePrice.toFixed(2)} <span className="text-sm">sFUEL</span>
+                        {bestBid > 0 ? bestBid.toFixed(5) : targetItem.basePrice.toFixed(5)} <span className="text-sm">sFUEL</span>
                     </div>
                     <div className="text-[9px] md:text-[10px] font-black text-white/40 uppercase tracking-widest mt-1">
                         {leader ? `Leading: ${leader.persona.name}` : `Min. Bid: ${targetItem.basePrice}`}
@@ -136,7 +136,7 @@ export function NegotiationView({ agents, targetItem, round, onSettle, isSettled
                                                 <div className="mt-2 md:mt-3 pt-2 md:pt-3 border-t border-white/5 flex items-center gap-2">
                                                     <span className="text-[8px] font-black uppercase text-white/20 tracking-widest">Intent Bid</span>
                                                     <span className="px-1.5 py-0.5 rounded bg-green-500/20 text-green-400 text-[8px] md:text-[9px] font-black font-mono tracking-tighter border border-green-500/20">
-                                                        {log.content.match(/\d+\.\d+/) ? log.content.match(/\d+\.\d+/)?.[0] : log.agent.currentBid.toFixed(2)} sFUEL
+                                                        {log.content.match(/\d+\.\d+/) ? log.content.match(/\d+\.\d+/)?.[0] : log.agent.currentBid.toFixed(5)} sFUEL
                                                     </span>
                                                 </div>
                                             )}
@@ -186,7 +186,7 @@ export function NegotiationView({ agents, targetItem, round, onSettle, isSettled
                                         "font-black text-xs md:text-sm font-mono tracking-tighter",
                                         agent.currentBid > 0 ? "text-white" : "text-white/20"
                                     )}>
-                                        {agent.currentBid > 0 ? agent.currentBid.toFixed(2) : '---'}
+                                        {agent.currentBid > 0 ? agent.currentBid.toFixed(5) : '---'}
                                     </span>
                                 </div>
 

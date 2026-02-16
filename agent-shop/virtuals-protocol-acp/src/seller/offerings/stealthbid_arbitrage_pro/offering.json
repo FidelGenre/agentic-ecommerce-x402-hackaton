@@ -1,5 +1,5 @@
 {
-  "name": "shark_arbitrage_pro",
+  "name": "stealthbid_arbitrage_pro",
   "description": "Executive-tier arbitrage signaling. Provides real-time, executable spreads across SKALE BITE V2 and Base liquidity pools with 98% confidence intervals.",
   "jobFee": 0.50,
   "jobFeeType": "fixed",

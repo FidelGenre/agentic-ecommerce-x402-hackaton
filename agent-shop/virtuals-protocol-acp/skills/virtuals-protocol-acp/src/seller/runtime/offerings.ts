@@ -4,7 +4,7 @@
 
 import * as fs from "fs";
 import * as path from "path";
-import { fileURLToPath, pathToFileURL } from "url";
+import { fileURLToPath } from "url";
 import type { OfferingHandlers } from "./offeringTypes.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -54,8 +54,7 @@ export async function loadOffering(
     throw new Error(`handlers.ts not found: ${handlersPath}`);
   }
 
-  const handlersUrl = pathToFileURL(handlersPath).href + `?update=${Date.now()}`;
-  const handlers = (await import(handlersUrl)) as OfferingHandlers;
+  const handlers = (await import(handlersPath)) as OfferingHandlers;
 
   if (typeof handlers.executeJob !== "function") {
     throw new Error(

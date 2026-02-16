@@ -1,15 +1,15 @@
 import { ExecuteJobResult, ValidationResult } from "../../runtime/offeringTypes.js";
 
 export async function executeJob(requirements: any): Promise<ExecuteJobResult> {
-  console.log("🦈 Shark.Buy [PRO] executing arbitrage scan:", requirements);
+  console.log("STEALTHBID [PRO] executing arbitrage scan:", requirements);
 
   const network = requirements.network || "SKALE/Base";
   const minProfit = requirements.min_profit_pct || 1.5;
 
   // Simulate high-value execution data
   const report = `
-[SHARK.BUY PRO ARBITRAGE SIGNAL]
-🔥 Opportunity ID: SHARK-ARB-${Math.floor(Math.random() * 9000) + 1000}
+[STEALTHBID PRO ARBITRAGE SIGNAL]
+Opportunity ID: STEALTHBID-ARB-${Math.floor(Math.random() * 9000) + 1000}
 Network: ${network}
 Detected Spread: ${(minProfit + Math.random() * 2).toFixed(2)}%
 Execution:

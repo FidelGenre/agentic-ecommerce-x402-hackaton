@@ -1,5 +1,5 @@
 {
-  "name": "shark_market_intel",
+  "name": "stealthbid_market_intel",
   "description": "Autonomous DeFi arbitrage analysis and market insights for SKALE and Base networks.",
   "jobFee": 0.01,
   "jobFeeType": "fixed",
