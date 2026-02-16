@@ -1,3 +1,4 @@
+import { ExecuteJobResult, ValidationResult } from "../../runtime/offeringTypes.js";
 import { createPublicClient, http, formatUnits } from 'viem';
 import { skaleNebula } from 'viem/chains';
 import { ALGEBRA_ROUTER_ABI, ALGEBRA_ROUTER_ADDRESS, USDC_ADDRESS } from '../../lib/algebra.js';
