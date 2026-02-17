@@ -1,7 +1,7 @@
 'use client'
 
 import { motion, AnimatePresence } from 'framer-motion'
-import { Shield, Sword, Cpu, Zap, Box, Trash2 } from 'lucide-react'
+import { Shield, TrendingUp, RefreshCw, Zap, Layers, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export interface Item {
@@ -17,44 +17,44 @@ export interface Item {
 
 export const MOCK_ITEMS: Item[] = [
     {
-        id: 'h100-cluster',
-        name: 'H100 GPU Cluster (24h)',
-        description: 'High-performance compute for AI training/inference.',
-        basePrice: 0.8,
-        icon: Cpu,
+        id: 'arb-eth-usdc',
+        name: 'ETH/USDC Arbitrage',
+        description: 'Price spread detected between Base and SKALE Nebula.',
+        basePrice: 0.5,
+        icon: RefreshCw,
         rarity: 'legendary',
-        provider: 'Nebula Cloud',
-        trustScore: 4.9
+        provider: 'Uniswap / Ruby',
+        trustScore: 4.95
     },
     {
-        id: 'zk-proof-gen',
-        name: 'ZK-Proof Generation',
-        description: 'On-demand zero-knowledge proof validity generation.',
-        basePrice: 0.4,
-        icon: Shield,
+        id: 'yield-usdc-vault',
+        name: 'USDC Yield Vault',
+        description: 'Auto-compounding stablecoin strategy on Aave V3.',
+        basePrice: 0.75,
+        icon: TrendingUp,
         rarity: 'epic',
-        provider: 'StarkNet Sol',
-        trustScore: 4.7
-    },
-    {
-        id: 'decentralized-storage',
-        name: '10TB Arweave Storage',
-        description: 'Permanent, censorship-resistant data storage.',
-        basePrice: 0.1,
-        icon: Box,
-        rarity: 'rare',
-        provider: 'Arweave DAO',
+        provider: 'Yearn Finance',
         trustScore: 4.8
     },
     {
-        id: 'validator-node',
-        name: 'SKALE Validator Node',
-        description: 'Dedicated validator instance for 30 days.',
-        basePrice: 0.9,
+        id: 'liquid-staking',
+        name: 'Liquid Staking (stETH)',
+        description: 'Stake ETH and receive stETH while maintaining liquidity.',
+        basePrice: 0.2,
+        icon: Layers,
+        rarity: 'rare',
+        provider: 'Lido Finance',
+        trustScore: 4.9
+    },
+    {
+        id: 'flash-loan-opp',
+        name: 'Flash Loan Opportunity',
+        description: 'High-risk, high-reward triangular arbitrage route.',
+        basePrice: 1.5,
         icon: Zap,
         rarity: 'legendary',
-        provider: 'NodeShift',
-        trustScore: 4.95
+        provider: 'Aave Flash',
+        trustScore: 4.6
     }
 ]
 
@@ -68,7 +68,7 @@ interface ItemSelectorProps {
 export function ItemSelector({ items, selectedItem, onSelect, onDelete }: ItemSelectorProps) {
     return (
         <div className="w-full space-y-4">
-            <h3 className="text-sm font-medium text-white/50 uppercase tracking-wider">Select Target Item</h3>
+            <h3 className="text-sm font-medium text-white/50 uppercase tracking-wider">Select Market Opportunity</h3>
             <div className="space-y-2">
                 {items.map((item) => {
                     const isSelected = selectedItem?.id === item.id

@@ -839,7 +839,7 @@ export default function Home() {
               <div className="absolute left-1/2 -translate-x-1/2 hidden lg:flex items-center gap-4">
                 <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10">
                   <Users className="w-3 h-3 text-white/40" />
-                  <span className="text-[10px] font-bold text-white/60">Agents</span>
+                  <span className="text-[10px] font-bold text-white/60">Protocols</span>
                   <span className="text-[10px] font-black text-white">{agentsList.length}</span>
                 </div>
                 <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10">

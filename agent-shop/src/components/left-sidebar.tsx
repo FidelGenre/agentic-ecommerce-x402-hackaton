@@ -156,7 +156,7 @@ export function LeftSidebar({
                         <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center gap-2">
                                 <div className="w-1 h-3 bg-purple-500 rounded-full" />
-                                <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Agent Personas</h3>
+                                <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">StealthBid Protocols</h3>
                             </div>
                             <button
                                 onClick={onAddAgent}
@@ -214,6 +214,6 @@ export function LeftSidebar({
                     </p>
                 )}
             </div>
-        </aside>
+        </aside >
     )
 }

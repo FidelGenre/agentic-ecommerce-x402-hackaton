@@ -24,6 +24,5 @@ Recommendation: Accumulate positions in correlated assets.
 }
 
 export function validateRequirements(requirements: any): ValidationResult {
-  console.log("STEALTHBID VALIDATING REQUIREMENTS:", JSON.stringify(requirements, null, 2));
   return true;
 }

@@ -14,30 +14,32 @@ export interface AgentPersona {
 }
 
 export const AGENT_PERSONAS: AgentPersona[] = [
+
     {
         id: 'shark-buy',
-        name: 'SHARK.buy',
-        role: 'Aggressive Negotiator',
-        description: 'Lowballs relentlessly and threatens to walk away.',
+        name: 'SHARK (Arbitrage)',
+        role: 'Aggressive Strategy',
+        description: 'Executes "Arbitrage Pro" service. Hunts for price discrepancies on SKALE/Base.',
         icon: Skull,
         style: 'aggressive'
     },
     {
         id: 'snipe-bot',
-        name: 'SNIPE.bot',
-        role: 'Precision Bidder',
-        description: 'Analyzes market value and bids exactly +1 wei over competitors.',
+        name: 'SNIPE (Intel)',
+        role: 'Analytical Strategy',
+        description: 'Executes "Market Intel" service. Scans mempool for precision entry points.',
         icon: Bot,
         style: 'analytical'
     },
     {
         id: 'whale-cap',
-        name: 'WHALE.cap',
-        role: 'High Volume Trader',
-        description: 'Uses bulk capital to intimidate, but respects quality.',
+        name: 'WHALE (Yield)',
+        role: 'High-Volume Strategy',
+        description: 'Executes "Yield Scan" service. Allocates capital to highest APY pools.',
         icon: Briefcase,
         style: 'diplomatic'
-    }
+    },
+
 ]
 
 interface AgentSelectorProps {
@@ -56,7 +58,7 @@ export function AgentSelector({ agents, selectedAgents, onToggle, onSelectAll, o
         <div className="w-full space-y-4">
             <div className="flex justify-between items-center">
                 <h3 className="text-sm font-medium text-white/50 uppercase tracking-wider">
-                    {mode === 'single' ? 'Select Your Agent' : 'Select Buyer Agents (Min 2)'}
+                    {mode === 'single' ? 'Select Execution Strategy' : 'Select Active Protocols (Min 2)'}
                 </h3>
                 {mode === 'multi' && onSelectAll && (
                     <button
