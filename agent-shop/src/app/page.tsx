@@ -103,7 +103,7 @@ export interface Receipt {
 
 // --- Constants ---
 const TREASURY_ADDRESS = '0x7e...3921' // Mock Treasury for demo
-const PROVIDER_ADDRESS = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266' as `0x${string}` // Valid Simulation Service Provider EOA (Hardhat #0)
+const PROVIDER_ADDRESS = '0xF9a711B0c6950F3Bb9BC0C56f26420F5ebd92082' as `0x${string}` // REAL USER AGENT (StealthBid)
 
 export default function Home() {
   const { connector, address: userAddress, chainId: accountChainId } = useAccount()

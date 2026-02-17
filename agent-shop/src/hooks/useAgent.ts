@@ -77,6 +77,9 @@ export function useAgent() {
         transport: http('https://base-sepolia-testnet.skalenodes.com/v1/bite-v2-sandbox')
     })
 
+    // REAL AGENT Integration for Revenue Tracking
+    const REAL_AGENT_ADDRESS = '0xF9a711B0c6950F3Bb9BC0C56f26420F5ebd92082';
+
     // Helper to append logs to the UI terminal
     const addLog = useCallback((type: AgentLog['type'], content: string, metadata?: any) => {
         setLogs(prev => {
@@ -260,6 +263,8 @@ export function useAgent() {
             addLog('thought', `🔍 Querying SKALE BITE Marketplace for "${decision.searchQuery}"...`)
             setState('NEGOTIATING')
 
+            let realServiceId = -1
+
             try {
                 const totalServices = await publicClient.readContract({
                     address: CONTRACT as Hex,
@@ -273,7 +278,7 @@ export function useAgent() {
                 // In production, this would use a Graph indexer or event filter.
                 const services: ServiceData[] = []
                 const total = BigInt(totalServices)
-                const limit = total < 5n ? Number(total) : 5
+                const limit = total < 20n ? Number(total) : 20
 
                 for (let i = 0; i < limit; i++) {
                     try {
@@ -310,9 +315,17 @@ export function useAgent() {
                     addLog('thought', `🧠 [Gemini] Evaluating ${services.length} active providers on-chain. Selecting optimal match...`)
                     await new Promise(r => setTimeout(r, 1000))
 
-                    // Select the first service found as the "Best Match" for this demo
-                    const bestSvc = services[0]
-                    addLog('info', `✅ Top Match Found: ${bestSvc.name} (Ranked by uptime and price: ${bestSvc.price} sFUEL)`)
+                    // Select the REAL AGENT service if found, otherwise fallback to first
+                    let bestSvc = services.find(s => s.provider.toLowerCase() === REAL_AGENT_ADDRESS.toLowerCase())
+
+                    if (bestSvc) {
+                        addLog('info', `✅ PREFERRED AGENT FOUND: ${bestSvc.name} (Your Agent)`)
+                        // Override desc for demo clarity
+                        bestSvc.description = "Verified STEALTHBID Protocol Node"
+                    } else {
+                        bestSvc = services[0]
+                        addLog('info', `✅ Top Match Found: ${bestSvc.name} (Ranked by uptime and price: ${bestSvc.price} sFUEL)`)
+                    }
                 } else {
                     addLog('info', `📋 No matching services found on-chain. Spawning dedicated agent resource...`)
                 }
@@ -328,75 +341,81 @@ export function useAgent() {
 
             // --- Step 5: Provider Agent Setup (Burner Wallet) ---
             const providerName = "Automated Agent GPU"
-            addLog('action', `🤖 Spawning Agent Provider: ${providerAccount.address.slice(0, 8)}...`)
-
+            let useRealAgent = realServiceId !== -1;
             const currentGasPrice = await publicClient.getGasPrice()
-            console.log('Network Gas Price:', currentGasPrice)
-
-            // Fuel the burner wallet if it's empty (User pays for agent gas)
             const providerBalance = await publicClient.getBalance({ address: providerAccount.address })
             const userBalance = await publicClient.getBalance({ address: address! })
 
-            if (providerBalance < parseEther('0.001')) {
-                if (userBalance > parseEther('0.006')) {
-                    try {
-                        addLog('info', `⛽ Fueling Provider Agent with 0.005 sFUEL for on-chain actions...`)
-                        const fuelHash = await walletClient.sendTransaction({
-                            to: providerAccount.address,
-                            value: parseEther('0.005'),
-                            gasPrice: currentGasPrice,
-                            chain: skaleBiteSandbox,
-                            gas: 12000000n // SKALE Optimization
-                        })
-                        await publicClient.waitForTransactionReceipt({ hash: fuelHash })
-                        addLog('tx', `✅ Provider Fueled`, { hash: fuelHash })
-                    } catch (err: any) {
-                        console.error("Real fueling failed:", err)
-                        if (err.message && (err.message.includes('User rejected') || err.message.includes('denied'))) {
-                            console.warn("User cancelled fueling.")
-                            addLog('error', '❌ Transaction Cancelled by User')
-                            setState('IDLE')
-                            return
-                        }
-                        // Fallback to simulation if fueling fails but user didn't cancel
-                        addLog('info', `⚠️ Network/Wallet Issue: Falling back to simulated fueling.`)
-                    }
-                } else {
-                    addLog('info', `⚠️ Demo Mode: Skipping gas fueling (insufficient user balance). Simulating agent actions...`)
-                }
-            }
+            if (!useRealAgent) {
+                // If using a burner agent, calculate gas price for it
+                addLog('action', `🤖 Spawning Agent Provider: ${providerAccount.address.slice(0, 8)}...`)
+                console.log('Network Gas Price:', currentGasPrice)
 
-            // Register the Provider Service on-chain
-            try {
-                if (userBalance > parseEther('0.006')) {
-                    try {
-                        const regHash = await providerClient.writeContract({
-                            address: CONTRACT as Hex,
-                            abi: SERVICE_MARKETPLACE_ABI,
-                            functionName: 'registerService',
-                            args: [
-                                providerName,
-                                'Automated Response Node',
-                                parseEther(decision.maxBudget),
-                                99, // Uptime (uint8)
-                                50  // Rating (uint8, 50 = 5.0)
-                            ],
-                            gasPrice: currentGasPrice,
-                            chain: skaleBiteSandbox,
-                            gas: 12000000n
-                        })
-                        addLog('tx', `✅ Provider Agent Registered on-chain`, { hash: regHash })
-                        await publicClient.waitForTransactionReceipt({ hash: regHash })
-                    } catch (e) {
-                        // Non-critical: Provider might already exist or gas issue
-                        console.warn("Provider registration skipped", e)
-                        addLog('tx', `✅ [Simulated/Existing] Provider Agent Registered`, { hash: '0xSIMULATED_HASH_' + Date.now() })
+                // Fuel the burner wallet if it's empty (User pays for agent gas)
+
+                if (providerBalance < parseEther('0.001')) {
+                    if (userBalance > parseEther('0.006')) {
+                        try {
+                            addLog('info', `⛽ Fueling Provider Agent with 0.005 sFUEL for on-chain actions...`)
+                            const fuelHash = await walletClient.sendTransaction({
+                                to: providerAccount.address,
+                                value: parseEther('0.005'),
+                                gasPrice: currentGasPrice,
+                                chain: skaleBiteSandbox,
+                                gas: 12000000n // SKALE Optimization
+                            })
+                            await publicClient.waitForTransactionReceipt({ hash: fuelHash })
+                            addLog('tx', `✅ Provider Fueled`, { hash: fuelHash })
+                        } catch (err: any) {
+                            console.error("Real fueling failed:", err)
+                            if (err.message && (err.message.includes('User rejected') || err.message.includes('denied'))) {
+                                console.warn("User cancelled fueling.")
+                                addLog('error', '❌ Transaction Cancelled by User')
+                                setState('IDLE')
+                                return
+                            }
+                            // Fallback to simulation if fueling fails but user didn't cancel
+                            addLog('info', `⚠️ Network/Wallet Issue: Falling back to simulated fueling.`)
+                        }
+                    } else {
+                        addLog('info', `⚠️ Demo Mode: Skipping gas fueling (insufficient user balance). Simulating agent actions...`)
                     }
-                } else {
-                    addLog('tx', `✅ [Simulated] Provider Agent Registered`, { hash: '0xSIMULATED_HASH_' + Date.now() })
                 }
-            } catch (e) {
-                console.warn("Provider registration error", e)
+
+                // Register the Provider Service on-chain
+                try {
+                    if (userBalance > parseEther('0.006')) {
+                        try {
+                            const regHash = await providerClient.writeContract({
+                                address: CONTRACT as Hex,
+                                abi: SERVICE_MARKETPLACE_ABI,
+                                functionName: 'registerService',
+                                args: [
+                                    providerName,
+                                    'Automated Response Node',
+                                    parseEther(decision.maxBudget),
+                                    99, // Uptime (uint8)
+                                    50  // Rating (uint8, 50 = 5.0)
+                                ],
+                                gasPrice: currentGasPrice,
+                                chain: skaleBiteSandbox,
+                                gas: 12000000n
+                            })
+                            addLog('tx', `✅ Provider Agent Registered on-chain`, { hash: regHash })
+                            await publicClient.waitForTransactionReceipt({ hash: regHash })
+                        } catch (e) {
+                            // Non-critical: Provider might already exist or gas issue
+                            console.warn("Provider registration skipped", e)
+                            addLog('tx', `✅ [Simulated/Existing] Provider Agent Registered`, { hash: '0xSIMULATED_HASH_' + Date.now() })
+                        }
+                    } else {
+                        addLog('tx', `✅ [Simulated] Provider Agent Registered`, { hash: '0xSIMULATED_HASH_' + Date.now() })
+                    }
+                } catch (e) {
+                    console.warn("Provider registration error", e)
+                }
+            } else {
+                addLog('info', `✅ Using Existing Real Agent (No Burner setup needed).`)
             }
 
             // --- Step 6: User Creates Request (Real Transaction) ---
@@ -423,7 +442,8 @@ export function useAgent() {
                         address: CONTRACT as Hex,
                         abi: SERVICE_MARKETPLACE_ABI,
                         functionName: 'createRequest',
-                        args: [BigInt(nextSvcId >= 0 ? nextSvcId : 0), objective],
+                        // USE REAL SERVICE ID IF AVAILABLE, OTHERWISE SIMULATED/NEW
+                        args: [BigInt(realServiceId !== -1 ? realServiceId : (nextSvcId >= 0 ? nextSvcId : 0)), objective],
                         value: parseEther(decision.maxBudget),
                         gasPrice: currentGasPrice,
                         chain: skaleBiteSandbox,
