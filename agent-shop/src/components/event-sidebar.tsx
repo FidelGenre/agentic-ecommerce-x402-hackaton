@@ -1,7 +1,7 @@
 
 import { useRef, useEffect } from 'react'
 import { AgentLog } from '@/hooks/useAgent'
-import { Receipt } from '@/app/page'
+import { Receipt } from '@/app/dashboard/page'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Terminal, History, ExternalLink, ShieldCheck, Activity, X, Zap, Shield, CheckCircle2, MessageSquare, Box, ShoppingCart, Trophy } from 'lucide-react'
 import { cn } from '@/lib/utils'
