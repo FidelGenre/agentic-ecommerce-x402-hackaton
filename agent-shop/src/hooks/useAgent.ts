@@ -85,7 +85,7 @@ export function useAgent() {
     })
 
     // REAL AGENT Integration for Revenue Tracking
-    const REAL_AGENT_ADDRESS = '0xF9a711B0c6950F3Bb9BC0C56f26420F5ebd92082';
+    const REAL_AGENT_ADDRESS = '0x83934d36c760BFA75f96C31dA0863c0792FB1A45';
 
     // Helper to append logs to the UI terminal
     const addLog = useCallback((type: AgentLog['type'], content: string, metadata?: any) => {
@@ -317,31 +317,34 @@ export function useAgent() {
                     }
                 }
 
-                // Attempt to directly query for the REAL AGENT's service ID (2219)
-                const TARGET_ID = 2219
+                // Attempt to directly query for the REAL AGENT's service ID (65)
+                const TARGET_ID = 65
                 try {
                     const targetSvc = await publicClient.readContract({
                         address: MARKETPLACE_ADDRESS,
                         abi: MARKETPLACE_ABI,
-                        functionName: 'services', // Changed from getService
+                        functionName: 'services',
                         args: [BigInt(TARGET_ID)]
                     }) as [bigint, `0x${string}`, string, string, bigint, bigint, bigint, boolean]
 
                     if (targetSvc && targetSvc[1] && targetSvc[1].toLowerCase() === REAL_AGENT_ADDRESS.toLowerCase()) {
-                        addLog('info', `🎯 Targeted Discovery: Found STEALTHBID (ID: 2219)`)
+                        addLog('info', `🎯 Targeted Discovery: Found STEALTHBID (ID: 65)`)
                         realServiceId = TARGET_ID
-                        // Also push it to services if not already found (it might be outside top 100)
-                        services.push({
-                            id: TARGET_ID,
-                            name: targetSvc[2],
-                            description: targetSvc[3],
-                            price: formatEther(targetSvc[4]),
-                            provider: targetSvc[1],
-                            active: targetSvc[7]
-                        });
+
+                        // Push to services if not already there
+                        if (!services.some(s => s.id === TARGET_ID)) {
+                            services.push({
+                                id: TARGET_ID,
+                                name: 'STEALTHBID Market Intel',
+                                description: 'Elite intelligence for SKALE ecosystem',
+                                price: formatEther(targetSvc[4]),
+                                provider: targetSvc[1],
+                                active: targetSvc[7]
+                            });
+                        }
                     }
                 } catch (e) {
-                    // ID 2219 might not exist
+                    addLog('error', `❌ Targeted discovery failed for ID 65: ${e}`)
                 }
 
                 if (services.length > 0) {
@@ -537,7 +540,7 @@ export function useAgent() {
             const requestId = Number(expectedRequestId)
 
             // --- Step 7: BITE V2 Negotiation (Commit-Reveal) ---
-            addLog('info', `🤝 Provider ${providerAccount.address.slice(0, 6)}... matched. Starting BITE negotiation...`)
+            addLog('thought', `🤖 Agent Autonomy: Detected new Request ${requestId}. Preparing Offer as STEALTHBID...`)
 
             const nonce = BigInt(Math.floor(Math.random() * 1000000))
             const offerPrice = parseEther(decision.maxBudget)
