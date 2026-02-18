@@ -326,7 +326,7 @@ export function useAgent() {
                             provider: result.svc[1],
                             active: result.svc[7]
                         })
-                        // Don't break, find all services
+                        // Don't break, find all services to evaluate
                     }
                 }
 
