@@ -81,6 +81,7 @@ export default function Dashboard() {
     const router = useRouter()
     const { address: userAddress, chainId: accountChainId } = useAccount()
     const { data: walletClient } = useWalletClient()
+    const { switchChainAsync } = useSwitchChain()
     const [mode, setMode] = useState<'1v1' | 'multi'>('1v1')
 
     // 1v1 State
@@ -103,6 +104,7 @@ export default function Dashboard() {
             id: `persona_${idx}`,
             name: bid.name,
             role: 'Autonomous Agent',
+            description: bid.strategy,
             icon: Bot,
             style: 'aggressive' as const
         },
@@ -269,6 +271,77 @@ export default function Dashboard() {
         } catch (error) { throw error }
     }
 
+    const executeDeposit = async () => {
+        if (!walletClient || !treasuryAccount) {
+            setErrorMessage("Wallet not ready.")
+            return
+        }
+        setIsDepositing(true)
+        try {
+            if (accountChainId !== skaleBiteSandbox.id) {
+                await switchChainAsync({ chainId: skaleBiteSandbox.id })
+            }
+            const [address] = await walletClient.getAddresses()
+            const hash = await walletClient.sendTransaction({
+                account: address,
+                to: treasuryAccount.address,
+                value: parseEther(depositAmount),
+                chain: skaleBiteSandbox,
+            })
+            await publicClient.waitForTransactionReceipt({ hash })
+            const newBal = await publicClient.getBalance({ address: treasuryAccount.address })
+            setTreasuryBalance(formatEther(newBal))
+            setIsFundingModalOpen(false)
+        } catch (err: any) {
+            setErrorMessage(err.message || "Deposit failed.")
+        } finally {
+            setIsDepositing(false)
+        }
+    }
+
+    const handleAddItemFinal = () => {
+        if (!newItemBase.name) return
+        const newItem: Item = {
+            id: `item_${crypto.randomUUID().split('-')[0]}`,
+            name: newItemBase.name,
+            description: 'Custom deployed target service.',
+            basePrice: parseFloat(newItemBase.price),
+            rarity: newItemBase.rarity as any,
+            icon: Box,
+            provider: 'User Defined',
+            trustScore: 5.0
+        }
+        setItems(p => [newItem, ...p])
+        setSelectedItem(newItem)
+        setShowAddItemModal(false)
+        setNewItemBase({ name: '', price: '0.5', rarity: 'rare' })
+    }
+
+    const handleAddAgentFinal = () => {
+        if (!newAgentBase.name) return
+        const newAgent: AgentPersona = {
+            id: `agent_${crypto.randomUUID().split('-')[0]}`,
+            name: newAgentBase.name,
+            role: 'Custom Agent',
+            description: `A ${newAgentBase.strategy} negotiator.`,
+            icon: Bot,
+            style: newAgentBase.strategy as any
+        }
+        setAgentsList(p => [newAgent, ...p])
+        setSelected1v1AgentId(newAgent.id)
+        setShowAddAgentModal(false)
+        setNewAgentBase({ name: '', strategy: 'aggressive' })
+    }
+
+    const handleDeleteItem = (id: string) => {
+        setItems(p => p.filter(i => i.id !== id))
+        if (selectedItem?.id === id) setSelectedItem(null)
+    }
+
+    const handleDeleteAgent = (id: string) => {
+        setAgentsList(p => p.filter(a => a.id !== id))
+    }
+
     const handleDeploy = async () => {
         if (mode === '1v1') {
             const persona = agentsList.find(p => p.id === selected1v1AgentId) || AGENT_PERSONAS.find(p => p.id === selected1v1AgentId)
@@ -335,8 +408,8 @@ export default function Dashboard() {
                             setSelectedAgentIds={setSelectedAgentIds} toggleAgentSelection={id => mode === '1v1' ? setSelected1v1AgentId(id) : setSelectedAgentIds(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id])}
                             objective={objective} setObjective={setObjective} onDeploy={handleDeploy}
                             onAddItem={() => setShowAddItemModal(true)} onAddAgent={() => setShowAddAgentModal(true)}
-                            onDeleteItem={id => setItems(p => p.filter(i => i.id !== id))}
-                            onDeleteAgent={id => setAgentsList(p => p.filter(a => a.id !== id))}
+                            onDeleteItem={handleDeleteItem}
+                            onDeleteAgent={handleDeleteAgent}
                             isDeploying={isNegotiating || isAuthorizing || isUnlockingData}
                             isReady={isReadyToNegotiate} isTreasuryReady={!!treasuryAccount} onFund={() => setIsFundingModalOpen(true)}
                         />
@@ -392,13 +465,82 @@ export default function Dashboard() {
                             <button onClick={() => setIsFundingModalOpen(false)} className="absolute top-4 right-4 text-white/30 hover:text-white"><XIcon /></button>
                             <h3 className="text-2xl font-black mb-6 uppercase">Treasury</h3>
                             <div className="space-y-4">
+                                {errorMessage && <div className="text-red-400 text-[10px] font-bold uppercase">{errorMessage}</div>}
                                 <div>
                                     <label className="text-[10px] text-white/40 uppercase block mb-1">Amount sFUEL</label>
                                     <input type="number" value={depositAmount} onChange={e => setDepositAmount(e.target.value)} className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-xl font-mono" />
                                 </div>
-                                <button onClick={() => { setIsDepositing(true); executeDeposit(); }} className="w-full py-5 bg-indigo-600 rounded-2xl font-black uppercase tracking-widest">{isDepositing ? "Processing..." : "Deposit"}</button>
+                                <button onClick={executeDeposit} className="w-full py-5 bg-indigo-600 rounded-2xl font-black uppercase tracking-widest" disabled={isDepositing}>{isDepositing ? "Processing..." : "Deposit"}</button>
                             </div>
                         </div>
+                    </motion.div>
+                )}
+
+                {showReceipt && receipt && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-xl p-4">
+                        <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-[#0a0a0c] rounded-3xl border border-white/10 w-full max-w-2xl overflow-hidden relative shadow-2xl">
+                            <div className="p-8 border-b border-white/5 flex justify-between items-center relative z-10">
+                                <div className="flex items-center gap-3">
+                                    <CheckCircle2 className="w-6 h-6 text-green-400" />
+                                    <div>
+                                        <h3 className="text-xl font-black uppercase tracking-tight text-white">Proof of Settlement</h3>
+                                        <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Transaction Finalized on SKALE</p>
+                                    </div>
+                                </div>
+                                <button onClick={() => setShowReceipt(false)} className="p-2 hover:bg-white/10 rounded-xl transition-colors"><XIcon className="w-5 h-5 text-white/30" /></button>
+                            </div>
+                            <div className="p-8 space-y-6">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
+                                        <label className="text-[9px] text-white/40 uppercase block mb-1">Final Price</label>
+                                        <p className="text-2xl font-black text-green-400 font-mono">{receipt.cartMandate?.finalPrice} sFUEL</p>
+                                    </div>
+                                    <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
+                                        <label className="text-[9px] text-white/40 uppercase block mb-1">Target</label>
+                                        <p className="text-lg font-bold text-white truncate">{receipt.intentMandate.target}</p>
+                                    </div>
+                                    <div className="col-span-2 p-4 bg-black/40 border border-white/5 rounded-2xl">
+                                        <label className="text-[9px] text-white/20 uppercase block mb-1">Hash</label>
+                                        <a href={`https://base-sepolia-testnet-explorer.skalenodes.com:10032/tx/${receipt.payment?.settlementHash}`} target="_blank" className="text-[10px] font-mono text-indigo-400 flex items-center gap-1 hover:underline truncate">
+                                            {receipt.payment?.settlementHash} <ExternalLink className="w-3 h-3" />
+                                        </a>
+                                    </div>
+                                </div>
+                                <button onClick={() => setShowReceipt(false)} className="w-full py-4 bg-indigo-600 rounded-xl font-black uppercase">Close Proof</button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+
+                {showAddItemModal && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[250] flex items-center justify-center bg-black/90 backdrop-blur-xl p-4">
+                        <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-[#1a1b26] border border-white/10 p-8 rounded-3xl w-full max-w-md space-y-6 shadow-2xl relative">
+                            <button onClick={() => setShowAddItemModal(false)} className="absolute top-4 right-4 p-2 hover:bg-white/5 rounded-xl transition-colors"><XIcon className="w-5 h-5 text-white/30" /></button>
+                            <h3 className="text-2xl font-black uppercase tracking-tighter">Create Target Item</h3>
+                            <div className="space-y-4">
+                                <input value={newItemBase.name} onChange={e => setNewItemBase(p => ({ ...p, name: e.target.value }))} placeholder="Item Name" className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-xs font-bold" />
+                                <input type="number" value={newItemBase.price} onChange={e => setNewItemBase(p => ({ ...p, price: e.target.value }))} placeholder="Base Price" className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-xs font-bold" />
+                                <button onClick={handleAddItemFinal} className="w-full py-5 bg-indigo-600 rounded-2xl font-black uppercase">Deploy Target</button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+
+                {showAddAgentModal && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[250] flex items-center justify-center bg-black/90 backdrop-blur-xl p-4">
+                        <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-[#1a1b26] border border-white/10 p-8 rounded-3xl w-full max-w-md space-y-6 shadow-2xl relative">
+                            <button onClick={() => setShowAddAgentModal(false)} className="absolute top-4 right-4 p-2 hover:bg-white/5 rounded-xl transition-colors"><XIcon className="w-5 h-5 text-white/30" /></button>
+                            <h3 className="text-2xl font-black uppercase tracking-tighter">Create Custom Agent</h3>
+                            <div className="space-y-4">
+                                <input value={newAgentBase.name} onChange={e => setNewAgentBase(p => ({ ...p, name: e.target.value }))} placeholder="Agent Name" className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-xs font-bold" />
+                                <select value={newAgentBase.strategy} onChange={e => setNewAgentBase(p => ({ ...p, strategy: e.target.value }))} className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-xs font-bold appearance-none">
+                                    <option value="aggressive">Aggressive</option>
+                                    <option value="analytical">Analytical</option>
+                                    <option value="diplomatic">Diplomatic</option>
+                                </select>
+                                <button onClick={handleAddAgentFinal} className="w-full py-5 bg-purple-600 rounded-2xl font-black uppercase">Initialize Agent</button>
+                            </div>
+                        </motion.div>
                     </motion.div>
                 )}
             </AnimatePresence>
