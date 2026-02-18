@@ -510,7 +510,10 @@ export function useAgent() {
             addLog('action', '🔐 [BITE] Encrypting offer... (Simulating BITE V2 Threshold via Hash-Commit for speed)')
 
             // Phase I: Submit Encrypted Offer (Commit)
-            if (userBalance > parseEther('0.006')) {
+            const isAuthorizedProvider = providerAccount.address.toLowerCase() === REAL_AGENT_ADDRESS.toLowerCase() ||
+                providerAccount.address.toLowerCase() === BOT_OPERATOR_ADDRESS.toLowerCase()
+
+            if (userBalance > parseEther('0.006') && isAuthorizedProvider) {
                 await new Promise(r => setTimeout(r, 2000)) // Delay to prevent nonce collision
                 try {
                     const commitHash = await providerClient.writeContract({
@@ -535,7 +538,7 @@ export function useAgent() {
 
             // Phase II: Reveal Offer (Decrypt)
             addLog('action', '⚡ [BITE] Revealing offer parameters...')
-            if (userBalance > parseEther('0.006')) {
+            if (userBalance > parseEther('0.006') && isAuthorizedProvider) {
                 await new Promise(r => setTimeout(r, 2000))
                 try {
                     const revealHash = await providerClient.writeContract({
