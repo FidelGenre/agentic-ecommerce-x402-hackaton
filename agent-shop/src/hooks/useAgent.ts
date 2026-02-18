@@ -422,6 +422,19 @@ export function useAgent() {
             addLog('action', `📝 [USER ACTION REQUIRED] Please sign 'createRequest' transaction...`)
             await new Promise(r => setTimeout(r, 500))
 
+            // CRITICAL FIX: Fetch ID *BEFORE* transaction to avoid RPC latency issues
+            let expectedRequestId = 0n
+            try {
+                expectedRequestId = await publicClient.readContract({
+                    address: CONTRACT as Hex,
+                    abi: SERVICE_MARKETPLACE_ABI,
+                    functionName: 'nextRequestId',
+                }) as bigint
+                addLog('info', `🔢 Target Request ID: ${expectedRequestId}`)
+            } catch (e) {
+                console.warn("Failed to fetch nextRequestId", e)
+            }
+
             // Calculate next service ID to link (simple heuristic)
             let nextSvcId = 0
             try {
@@ -472,13 +485,8 @@ export function useAgent() {
                 addLog('tx', `✅ [Simulated] Request Created!`, { hash: reqHash + Date.now() })
             }
 
-            // Get Request ID for next steps
-            const nextReqId = await publicClient.readContract({
-                address: CONTRACT as Hex,
-                abi: SERVICE_MARKETPLACE_ABI,
-                functionName: 'nextRequestId',
-            })
-            const requestId = Number(nextReqId) - 1
+            // Use the pre-fetched ID as the definitive ID for this session
+            const requestId = Number(expectedRequestId)
 
             // --- Step 7: BITE V2 Negotiation (Commit-Reveal) ---
             addLog('info', `🤝 Provider ${providerAccount.address.slice(0, 6)}... matched. Starting BITE negotiation...`)
