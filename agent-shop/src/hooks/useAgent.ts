@@ -280,6 +280,7 @@ export function useAgent() {
                 const total = BigInt(totalServices)
                 const limit = total < 20n ? Number(total) : 20
 
+                // 1. Generic Scan (Latest 20)
                 for (let i = 0; i < limit; i++) {
                     try {
                         const id = total - 1n - BigInt(i)
@@ -290,16 +291,10 @@ export function useAgent() {
                             args: [id]
                         }) as [bigint, `0x${string}`, string, string, bigint, bigint, bigint, boolean] // Strict Tuple Destructuring
 
-                        // [id, provider, name, description, price, uptime, rating, isRegistered]
-                        // Note: ABI output names might vary, relying on index order from previous ABI inspection
-                        // Actually, let's verify ABI. services() usually returns struct.
-                        // Based on typical generated ABI, it returns multiple values.
-
-                        // Map to strict type
                         services.push({
                             id: Number(svc[0]),
                             provider: svc[1],
-                            name: svc[2], // byte32/string
+                            name: svc[2],
                             description: svc[3],
                             price: formatEther(svc[4]),
                             uptime: Number(svc[5]),
@@ -309,6 +304,34 @@ export function useAgent() {
                     } catch (err) {
                         console.error("Error fetching service:", err)
                     }
+                }
+
+                // 2. Targeted Check for User's Agent (ID 2219)
+                // This guarantees we find it even if it's old (outside top 20)
+                try {
+                    const TARGET_ID = 2219n
+                    const targetSvc = await publicClient.readContract({
+                        address: CONTRACT as Hex,
+                        abi: SERVICE_MARKETPLACE_ABI,
+                        functionName: 'services',
+                        args: [TARGET_ID]
+                    }) as [bigint, `0x${string}`, string, string, bigint, bigint, bigint, boolean]
+
+                    if (targetSvc && targetSvc[1].toLowerCase() === REAL_AGENT_ADDRESS.toLowerCase()) {
+                        addLog('info', `🎯 Targeted Discovery: Found STEALTHBID (ID: 2219)`)
+                        services.push({
+                            id: Number(targetSvc[0]),
+                            provider: targetSvc[1],
+                            name: targetSvc[2],
+                            description: targetSvc[3],
+                            price: formatEther(targetSvc[4]),
+                            uptime: Number(targetSvc[5]),
+                            rating: Number(targetSvc[6]),
+                            active: targetSvc[7]
+                        })
+                    }
+                } catch (e) {
+                    // ID 2219 might not exist on this chain if redeployed, safe to ignore
                 }
 
                 if (services.length > 0) {
