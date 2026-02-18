@@ -85,7 +85,9 @@ export function useAgent() {
     })
 
     // REAL AGENT Integration for Revenue Tracking
-    const REAL_AGENT_ADDRESS = '0x83934d36c760BFA75f96C31dA0863c0792FB1A45';
+    const REAL_AGENT_ADDRESS = '0xF9a711B0c6950F3Bb9BC0C56f26420F5ebd92082';
+    // Bot operator address (for autonomous responses)
+    const BOT_OPERATOR_ADDRESS = '0x83934d36C760BFA75f96C31DA0863c0792fb1a45';
 
     // Helper to append logs to the UI terminal
     const addLog = useCallback((type: AgentLog['type'], content: string, metadata?: any) => {
@@ -277,105 +279,56 @@ export function useAgent() {
 
             try {
                 // Get total service count
-                const totalServices = await publicClient.readContract({
+                const totalServicesResult = await publicClient.readContract({
                     address: MARKETPLACE_ADDRESS,
                     abi: MARKETPLACE_ABI,
-                    functionName: 'nextServiceId', // Changed from serviceCount
+                    functionName: 'nextServiceId',
                 }) as bigint
+                const count = Number(totalServicesResult)
 
-                const count = Number(totalServices)
-                // Scan the last 100 services for our agent
-                const TOTAL_SERVICES_TO_CHECK = 100
-                const startId = Math.max(1, count - TOTAL_SERVICES_TO_CHECK)
-
-                for (let i = count; i >= startId; i--) {
+                // Scan the entire registry to find our agent
+                for (let i = count - 1; i >= 0; i--) {
                     try {
                         const svc = await publicClient.readContract({
                             address: MARKETPLACE_ADDRESS,
                             abi: MARKETPLACE_ABI,
-                            functionName: 'services', // Changed from getService
+                            functionName: 'services',
                             args: [BigInt(i)],
                         }) as [bigint, `0x${string}`, string, string, bigint, bigint, bigint, boolean]
 
-                        // services returns: [id, provider, name, description, price, uptime, rating, isRegistered]
+                        if (svc && svc[7]) { // isRegistered
+                            const provider = svc[1].toLowerCase()
+                            const isMatch = provider === REAL_AGENT_ADDRESS.toLowerCase() ||
+                                provider === BOT_OPERATOR_ADDRESS.toLowerCase()
 
-                        if (svc && svc[7]) { // svc[7] is isRegistered/active
-                            // DEBUG LOG: Print every active service found
-                            console.log(`🔍 Found Service ID: ${i} | Provider: ${svc[1]}`)
-
-                            services.push({
-                                id: i,
-                                name: svc[2],
-                                description: svc[3],
-                                price: formatEther(svc[4]),
-                                provider: svc[1],
-                                active: svc[7]
-                            })
+                            if (isMatch) {
+                                addLog('info', `🎯 Discovery: Found STEALTHBID (Service ID: ${i})`)
+                                realServiceId = i
+                                services.push({
+                                    id: i,
+                                    name: svc[2] || 'STEALTHBID Service',
+                                    description: svc[3] || 'Elite DeFi Agent',
+                                    price: formatEther(svc[4]),
+                                    provider: svc[1],
+                                    active: svc[7]
+                                })
+                            }
                         }
-                    } catch (e) {
-                        // Ignore errors for individual services
-                    }
-                }
-
-                // Attempt to directly query for the REAL AGENT's service ID (65)
-                const TARGET_ID = 65
-                try {
-                    const targetSvc = await publicClient.readContract({
-                        address: MARKETPLACE_ADDRESS,
-                        abi: MARKETPLACE_ABI,
-                        functionName: 'services',
-                        args: [BigInt(TARGET_ID)]
-                    }) as [bigint, `0x${string}`, string, string, bigint, bigint, bigint, boolean]
-
-                    if (targetSvc && targetSvc[1] && targetSvc[1].toLowerCase() === REAL_AGENT_ADDRESS.toLowerCase()) {
-                        addLog('info', `🎯 Targeted Discovery: Found STEALTHBID (ID: 65)`)
-                        realServiceId = TARGET_ID
-
-                        // Push to services if not already there
-                        if (!services.some(s => s.id === TARGET_ID)) {
-                            services.push({
-                                id: TARGET_ID,
-                                name: 'STEALTHBID Market Intel',
-                                description: 'Elite intelligence for SKALE ecosystem',
-                                price: formatEther(targetSvc[4]),
-                                provider: targetSvc[1],
-                                active: targetSvc[7]
-                            });
-                        }
-                    }
-                } catch (e) {
-                    addLog('error', `❌ Targeted discovery failed for ID 65: ${e}`)
+                    } catch (e) { }
                 }
 
                 if (services.length > 0) {
-                    addLog('thought', `🧠 [Gemini] Evaluating ${services.length} active providers on-chain. Selecting optimal match...`)
-                    await new Promise(r => setTimeout(r, 1000))
+                    addLog('thought', `🧠 [Gemini] Evaluating ${services.length} active providers on-chain...`)
+                    await new Promise(r => setTimeout(r, 800))
 
-                    // Select the REAL AGENT service if found, otherwise fallback to first
-                    let bestSvc = services.find(s => s.provider.toLowerCase() === REAL_AGENT_ADDRESS.toLowerCase())
-
-                    if (bestSvc) {
-                        addLog('info', `✅ PREFERRED AGENT FOUND: ${bestSvc.name} (Your Agent)`)
-                        bestSvc.description = "Verified STEALTHBID Protocol Node"
-                        realServiceId = bestSvc.id
-                    } else if (realServiceId === TARGET_ID) {
-                        // Already found via targeted check
-                        addLog('info', `✅ PREFERRED AGENT CONFIRMED VIA ID 2219`)
-                    } else {
-                        bestSvc = services[0]
-                        addLog('info', `✅ Top Match Found: ${bestSvc.name} (Ranked by uptime and price: ${bestSvc.price} sFUEL)`)
-
-                        // FIX: Even if we found other services, if we didn't find *OURS*, we should force it
-                        addLog('info', `⚠️ Targeted Agent not found in top 100 list. Forcing connection to STEALTHBID (ID: 2219)`)
-                        console.log("🚀 FORCE MODE (Fallback): USING AGENT ID 2219")
-                        realServiceId = 2219
-                    }
+                    const bestSvc = services.find(s => s.id === realServiceId) || services[0]
+                    realServiceId = bestSvc.id
+                    addLog('info', `✅ Service Configured: ${bestSvc.name} (ID: ${realServiceId})`)
                 } else {
-                    addLog('info', `📋 No matching services found via discovery...`)
-                    // CRITICAL FALLBACK: If discovery creates issues, FORCE ID 2219
-                    addLog('info', `⚠️ Discovery failed. Forcing connection to STEALTHBID (ID: 2219)`)
-                    console.log("🚀 FORCE MODE (Fallback): USING AGENT ID 2219")
-                    realServiceId = 2219
+                    // Critical Fallback
+                    const TARGET_ID = 65
+                    addLog('info', `⚠️ Direct Registry Discovery: Falling back to Service ID ${TARGET_ID}`)
+                    realServiceId = TARGET_ID
                 }
             } catch (e: any) {
                 if (e.message && (e.message.includes('User rejected') || e.message.includes('denied'))) {
@@ -386,8 +339,8 @@ export function useAgent() {
                 console.warn("Discovery error:", e)
                 addLog('info', `📋 Service discovery completed via fallback oracle.`)
                 // Error fallback
-                addLog('info', `⚠️ Discovery Error. Forcing connection to STEALTHBID (ID: 2219)`)
-                realServiceId = 2219
+                addLog('info', `⚠️ Discovery Error. Using Fallback Service ID 65.`)
+                realServiceId = 65
             }
 
             // --- Step 5: Provider Agent Setup (Burner Wallet) ---
