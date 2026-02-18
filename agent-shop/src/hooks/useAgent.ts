@@ -345,12 +345,19 @@ export function useAgent() {
                         addLog('info', `✅ PREFERRED AGENT FOUND: ${bestSvc.name} (Your Agent)`)
                         // Override desc for demo clarity
                         bestSvc.description = "Verified STEALTHBID Protocol Node"
+                        realServiceId = bestSvc.id
                     } else {
                         bestSvc = services[0]
                         addLog('info', `✅ Top Match Found: ${bestSvc.name} (Ranked by uptime and price: ${bestSvc.price} sFUEL)`)
+                        // If we didn't find our specific agent but found others, we might want to force ours anyway if config says so.
+                        // But for now, let's trust the "Targeted Check" above.
                     }
                 } else {
-                    addLog('info', `📋 No matching services found on-chain. Spawning dedicated agent resource...`)
+                    addLog('info', `📋 No matching services found via discovery...`)
+                    // CRITICAL FALLBACK: If discovery creates issues, FORCE ID 2219
+                    // This assumes the agent is definitely deployed at ID 2219.
+                    addLog('info', `⚠️ Discovery failed. Forcing connection to STEALTHBID (ID: 2219)`)
+                    realServiceId = 2219
                 }
             } catch (e: any) {
                 if (e.message && (e.message.includes('User rejected') || e.message.includes('denied'))) {
@@ -360,6 +367,9 @@ export function useAgent() {
                 }
                 console.warn("Discovery error:", e)
                 addLog('info', `📋 Service discovery completed via fallback oracle.`)
+                // Error fallback
+                addLog('info', `⚠️ Discovery Error. Forcing connection to STEALTHBID (ID: 2219)`)
+                realServiceId = 2219
             }
 
             // --- Step 5: Provider Agent Setup (Burner Wallet) ---
