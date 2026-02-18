@@ -317,8 +317,7 @@ export function useAgent() {
                         provider === providerAccount.address.toLowerCase()
 
                     if (isMatch) {
-                        addLog('info', `🎯 Discovery: Found STEALTHBID (Service ID: ${result.id})`)
-                        realServiceId = result.id
+                        addLog('info', `🎯 Discovery: Found STEALTHBID Service (ID: ${result.id}, Name: ${result.svc[2]})`)
                         services.push({
                             id: result.id,
                             name: result.svc[2] || 'STEALTHBID Service',
@@ -327,15 +326,23 @@ export function useAgent() {
                             provider: result.svc[1],
                             active: result.svc[7]
                         })
-                        break // Found our service, stop scanning
+                        // Don't break, find all services
                     }
                 }
 
                 if (services.length > 0) {
-                    addLog('thought', `🧠 [Gemini] Evaluating ${services.length} active providers on-chain...`)
+                    addLog('thought', `🧠 [Gemini] Evaluating ${services.length} active STEALTHBID services...`)
                     await new Promise(r => setTimeout(r, 400))
-                    const bestSvc = services.find(s => s.id === realServiceId) || services[0]
+
+                    // Prioritize "Market Intel" service for standard 1v1 flow
+                    const intelService = services.find(s =>
+                        s.name.toLowerCase().includes('stealthbid_market_intel') ||
+                        s.name.toLowerCase().includes('market intel')
+                    )
+
+                    const bestSvc = intelService || services[0]
                     realServiceId = bestSvc.id
+
                     addLog('info', `✅ Service Configured: ${bestSvc.name} (ID: ${realServiceId})`)
                 } else {
                     // Use the most recent registered service
