@@ -173,6 +173,16 @@ export default function Dashboard() {
         return () => clearInterval(interval)
     }, [treasuryAccount, isDepositing, publicClient])
 
+    const handleDownloadReceipt = (receiptData: Receipt) => {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(receiptData, null, 2))
+        const downloadAnchorNode = document.createElement('a')
+        downloadAnchorNode.setAttribute("href", dataStr)
+        downloadAnchorNode.setAttribute("download", `receipt_${receiptData.id}.json`)
+        document.body.appendChild(downloadAnchorNode)
+        downloadAnchorNode.click()
+        downloadAnchorNode.remove()
+    }
+
     const handleGenerateReceipt = useCallback((realHash?: string, isOneOnOne?: boolean) => {
         let itemTitle = selectedItem?.name || objective || 'Service Purchase'
         let finalPrice = winner?.currentBid.toString() || '0.01'
@@ -506,7 +516,29 @@ export default function Dashboard() {
                                         </a>
                                     </div>
                                 </div>
-                                <button onClick={() => setShowReceipt(false)} className="w-full py-4 bg-indigo-600 rounded-xl font-black uppercase">Close Proof</button>
+                                <div className="grid grid-cols-3 gap-3 pt-2">
+                                    <button
+                                        onClick={() => window.open(`https://base-sepolia-testnet-explorer.skalenodes.com:10032/tx/${receipt.payment?.settlementHash}`, '_blank')}
+                                        className="py-4 bg-indigo-600 hover:bg-indigo-500 text-white border-t border-indigo-400/20 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(79,70,229,0.3)] hover:scale-[1.02] active:scale-95"
+                                    >
+                                        <Globe className="w-3 h-3 text-white" />
+                                        Verify
+                                    </button>
+                                    <button
+                                        onClick={() => receipt && handleDownloadReceipt(receipt)}
+                                        className="py-4 bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95"
+                                    >
+                                        <FileJson className="w-3 h-3 text-white/50" />
+                                        JSON
+                                    </button>
+                                    <button
+                                        onClick={() => setShowReceipt(false)}
+                                        className="py-4 bg-white/5 hover:bg-green-500/10 text-white hover:text-green-400 border border-white/10 hover:border-green-500/30 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95"
+                                    >
+                                        <RefreshCw className="w-3 h-3" />
+                                        New
+                                    </button>
+                                </div>
                             </div>
                         </motion.div>
                     </motion.div>
