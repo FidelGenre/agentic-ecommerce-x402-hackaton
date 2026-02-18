@@ -373,12 +373,12 @@ export default function Dashboard() {
     }
 
     return (
-        <main className="fixed inset-0 h-screen w-screen overflow-hidden bg-black flex flex-col items-center relative text-white">
+        <main className="fixed inset-0 h-screen w-screen overflow-hidden bg-[#0d1117] flex flex-col items-center relative text-white">
             <div className="mesh-bg absolute inset-0 z-0 pointer-events-none opacity-50" />
             <div className="grid-overlay absolute inset-0 z-0 pointer-events-none opacity-20" />
 
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full h-full flex flex-col relative z-10">
-                <header className="h-14 border-b border-white/5 bg-[#0a0a0c]/80 backdrop-blur-xl px-4 flex items-center justify-between z-50">
+                <header className="h-14 border-b border-white/8 bg-[#151921]/80 backdrop-blur-xl px-4 flex items-center justify-between z-50">
                     <div className="flex items-center gap-2 md:gap-6">
                         <button onClick={() => setShowMobileLeft(true)} className="lg:hidden p-2 hover:bg-white/5 rounded-xl border border-white/10 text-white/40"><Menu className="w-5 h-5" /></button>
                         <div className="flex items-center gap-2 cursor-pointer group" onClick={() => router.push('/')}>
@@ -425,7 +425,7 @@ export default function Dashboard() {
                         />
                     </div>
 
-                    <div className="flex-1 flex flex-col relative overflow-hidden bg-[#050505] border-x border-white/5">
+                    <div className="flex-1 flex flex-col relative overflow-hidden bg-[#111827] border-x border-white/8">
                         <AnimatePresence>
                             {isNegotiating && mode === '1v1' && (
                                 <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="w-full pt-4 pb-8 px-4 z-20">
@@ -457,11 +457,11 @@ export default function Dashboard() {
                     </div>
 
                     <div className="hidden xl:block w-96 h-full flex-none border-l border-white/5">
-                        <EventSidebar logs={mode === '1v1' ? logs : battleLogs.map((l, i) => ({ timestamp: Date.now() + i, type: 'info', content: l } as any))} deals={completedDeals} onClose={() => setShowReceipt(false)} />
+                        <EventSidebar logs={mode === '1v1' ? logs : battleLogs.map((l, i) => ({ timestamp: Date.now() + i, type: 'info', content: l } as any))} deals={completedDeals} onClose={() => setShowReceipt(false)} onDealClick={(deal) => { setReceipt(deal); setShowReceipt(true); }} />
                     </div>
                 </div>
 
-                <footer className="h-8 border-t border-white/5 bg-black/60 px-6 flex items-center justify-between text-[10px] font-mono uppercase tracking-widest text-white/40">
+                <footer className="h-8 border-t border-white/8 bg-[#0d1117]/60 px-6 flex items-center justify-between text-[10px] font-mono uppercase tracking-widest text-white/40">
                     <span>SKALE • BITE_V2 • x402 • GEMINI</span>
                     <span>&copy; 2026 STEALTHBID</span>
                 </footer>
@@ -488,7 +488,7 @@ export default function Dashboard() {
 
                 {showReceipt && receipt && (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-xl p-4">
-                        <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-[#0a0a0c] rounded-3xl border border-white/10 w-full max-w-2xl overflow-hidden relative shadow-2xl">
+                        <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-[#151921] rounded-3xl border border-white/10 w-full max-w-2xl overflow-hidden relative shadow-2xl">
                             <div className="p-8 border-b border-white/5 flex justify-between items-center relative z-10">
                                 <div className="flex items-center gap-3">
                                     <CheckCircle2 className="w-6 h-6 text-green-400" />

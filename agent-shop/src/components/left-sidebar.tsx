@@ -63,7 +63,7 @@ export function LeftSidebar({
     const [speed, setSpeed] = (typeof window !== 'undefined') ? [5, (v: any) => { }] as const : [5, (v: any) => { }] as const; // Mocked state for UI
 
     return (
-        <aside className="w-full h-full border-r border-white/5 bg-[#0a0a0c] overflow-y-auto custom-scrollbar z-30 flex flex-col relative">
+        <aside className="w-full h-full border-r border-white/8 bg-[#151921] overflow-y-auto custom-scrollbar z-30 flex flex-col relative">
             {/* Mobile Close Button */}
             {onClose && (
                 <button

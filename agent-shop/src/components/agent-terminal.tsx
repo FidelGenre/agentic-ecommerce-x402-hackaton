@@ -19,9 +19,9 @@ export function AgentTerminal({ logs, status, targetItem }: AgentTerminalProps) 
     }, [logs])
 
     return (
-        <div className="w-full flex-1 flex flex-col min-h-0 bg-[#050505]">
+        <div className="w-full flex-1 flex flex-col min-h-0 bg-[#111827]">
             {/* Terminal Window */}
-            <div className="flex-1 flex flex-col bg-[#0a0a0c] border border-white/5 rounded-3xl overflow-hidden shadow-2xl m-4">
+            <div className="flex-1 flex flex-col bg-[#151921] border border-white/5 rounded-3xl overflow-hidden shadow-2xl m-4">
                 {/* Window Header (Agents OS Style) */}
                 <div className="px-6 py-4 border-b border-white/10 bg-gradient-to-r from-indigo-500/10 via-purple-500/5 to-transparent flex items-center justify-between">
                     <div className="flex items-center gap-4">

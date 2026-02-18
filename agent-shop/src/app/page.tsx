@@ -25,7 +25,7 @@ export default function Home() {
   }
 
   return (
-    <main className="fixed inset-0 h-screen w-screen overflow-hidden bg-black flex flex-col items-center justify-center p-6 text-white">
+    <main className="fixed inset-0 h-screen w-screen overflow-hidden bg-[#0d1117] flex flex-col items-center justify-center p-6 text-white">
       <div className="mesh-bg absolute inset-0 z-0 pointer-events-none opacity-50" />
       <div className="grid-overlay absolute inset-0 z-0 pointer-events-none opacity-20" />
 

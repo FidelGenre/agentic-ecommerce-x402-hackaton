@@ -10,9 +10,10 @@ interface EventSidebarProps {
     logs: AgentLog[]
     deals: Receipt[]
     onClose?: (receipt?: Receipt) => void
+    onDealClick?: (deal: Receipt) => void
 }
 
-export function EventSidebar({ logs, deals, onClose }: EventSidebarProps) {
+export function EventSidebar({ logs, deals, onClose, onDealClick }: EventSidebarProps) {
     const reversedLogs = [...logs].reverse().slice(0, 50)
     const logEndRef = useRef<HTMLDivElement>(null)
 
@@ -24,7 +25,7 @@ export function EventSidebar({ logs, deals, onClose }: EventSidebarProps) {
     }, [logs])
 
     return (
-        <aside className="h-full flex flex-col border-l border-white/5 bg-[#0a0a0c] w-full overflow-hidden relative">
+        <aside className="h-full flex flex-col border-l border-white/5 bg-[#151921] w-full overflow-hidden relative">
             {/* Mobile Close Button */}
             {onClose && (
                 <button
@@ -119,7 +120,7 @@ export function EventSidebar({ logs, deals, onClose }: EventSidebarProps) {
                                     initial={{ opacity: 0, y: 10 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     whileHover={{ scale: 1.02, backgroundColor: 'rgba(255, 255, 255, 0.05)' }}
-                                    onClick={() => onClose && onClose(deal)} // Pass deal back to parent
+                                    onClick={() => onDealClick && onDealClick(deal)} // Open receipt modal
                                     className="p-3 rounded-xl bg-white/[0.03] border border-white/5 cursor-pointer transition-all group active:scale-95"
                                 >
                                     <div className="flex justify-between items-start mb-2">

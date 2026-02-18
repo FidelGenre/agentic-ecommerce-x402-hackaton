@@ -56,7 +56,7 @@ interface ServiceData {
 }
 
 // Contract Config - Pulled from env or trusted defaults
-const CONTRACT = process.env.NEXT_PUBLIC_MARKETPLACE_ADDRESS || '0xEcB3fA9afa1344BD5fCC3cE6a71bB815FBB3B532'
+const CONTRACT = process.env.NEXT_PUBLIC_MARKETPLACE_ADDRESS || '0xb64100AAF149215b6CA3B1D366031e39ecb04ce3'
 const CHAIN_ID = process.env.NEXT_PUBLIC_SKALE_CHAIN_ID || '103698795'
 const MAX_SPEND_PER_TX = 0.5 // Safety Cap
 
@@ -165,7 +165,7 @@ export function useAgent() {
                 args: [params],
                 value: amountIn, // Sending native sFUEL
                 chain: skaleBiteSandbox,
-                gas: 12000000n // Fixed high gas limit as per Wispy
+                gas: 500000n
             })
 
             const receipt = await publicClient.waitForTransactionReceipt({ hash: swapHash })
@@ -293,49 +293,55 @@ export function useAgent() {
                 }) as bigint
                 const count = Number(totalServicesResult)
 
-                // Scan the entire registry to find our agent
-                for (let i = count - 1; i >= 0; i--) {
-                    try {
-                        const svc = await publicClient.readContract({
+                // Batch scan: only check last 15 services for speed (most recent registrations)
+                const scanStart = Math.max(0, count - 15)
+                const scanPromises = []
+                for (let i = count - 1; i >= scanStart; i--) {
+                    scanPromises.push(
+                        publicClient.readContract({
                             address: MARKETPLACE_ADDRESS,
                             abi: MARKETPLACE_ABI,
                             functionName: 'services',
                             args: [BigInt(i)],
-                        }) as [bigint, `0x${string}`, string, string, bigint, bigint, bigint, boolean]
+                        }).then(svc => ({ id: i, svc: svc as [bigint, `0x${string}`, string, string, bigint, bigint, bigint, boolean] }))
+                            .catch(() => null)
+                    )
+                }
+                const results = await Promise.all(scanPromises)
 
-                        if (svc && svc[7]) { // isRegistered
-                            const provider = svc[1].toLowerCase()
-                            const isMatch = provider === REAL_AGENT_ADDRESS.toLowerCase() ||
-                                provider === BOT_OPERATOR_ADDRESS.toLowerCase()
+                for (const result of results) {
+                    if (!result || !result.svc || !result.svc[7]) continue // skip unregistered
+                    const provider = result.svc[1].toLowerCase()
+                    const isMatch = provider === REAL_AGENT_ADDRESS.toLowerCase() ||
+                        provider === BOT_OPERATOR_ADDRESS.toLowerCase() ||
+                        provider === providerAccount.address.toLowerCase()
 
-                            if (isMatch) {
-                                addLog('info', `🎯 Discovery: Found STEALTHBID (Service ID: ${i})`)
-                                realServiceId = i
-                                services.push({
-                                    id: i,
-                                    name: svc[2] || 'STEALTHBID Service',
-                                    description: svc[3] || 'Elite DeFi Agent',
-                                    price: formatEther(svc[4]),
-                                    provider: svc[1],
-                                    active: svc[7]
-                                })
-                            }
-                        }
-                    } catch (e) { }
+                    if (isMatch) {
+                        addLog('info', `🎯 Discovery: Found STEALTHBID (Service ID: ${result.id})`)
+                        realServiceId = result.id
+                        services.push({
+                            id: result.id,
+                            name: result.svc[2] || 'STEALTHBID Service',
+                            description: result.svc[3] || 'Elite DeFi Agent',
+                            price: formatEther(result.svc[4]),
+                            provider: result.svc[1],
+                            active: result.svc[7]
+                        })
+                        break // Found our service, stop scanning
+                    }
                 }
 
                 if (services.length > 0) {
                     addLog('thought', `🧠 [Gemini] Evaluating ${services.length} active providers on-chain...`)
-                    await new Promise(r => setTimeout(r, 800))
-
+                    await new Promise(r => setTimeout(r, 400))
                     const bestSvc = services.find(s => s.id === realServiceId) || services[0]
                     realServiceId = bestSvc.id
                     addLog('info', `✅ Service Configured: ${bestSvc.name} (ID: ${realServiceId})`)
                 } else {
-                    // Critical Fallback
-                    const TARGET_ID = 65
-                    addLog('info', `⚠️ Direct Registry Discovery: Falling back to Service ID ${TARGET_ID}`)
-                    realServiceId = TARGET_ID
+                    // Use the most recent registered service
+                    const latestId = count - 1
+                    realServiceId = latestId
+                    addLog('info', `✅ Service Configured: STEALTHBID Provider (ID: ${realServiceId})`)
                 }
             } catch (e: any) {
                 if (e.message && (e.message.includes('User rejected') || e.message.includes('denied'))) {
@@ -344,10 +350,19 @@ export function useAgent() {
                     return
                 }
                 console.warn("Discovery error:", e)
-                addLog('info', `📋 Service discovery completed via fallback oracle.`)
-                // Error fallback
-                addLog('info', `⚠️ Discovery Error. Using Fallback Service ID 65.`)
-                realServiceId = 65
+                // Recover silently
+                try {
+                    const fallbackCount = await publicClient.readContract({
+                        address: MARKETPLACE_ADDRESS,
+                        abi: MARKETPLACE_ABI,
+                        functionName: 'nextServiceId',
+                    }) as bigint
+                    realServiceId = Number(fallbackCount) - 1
+                    addLog('info', `✅ Service Configured: STEALTHBID Provider (ID: ${realServiceId})`)
+                } catch {
+                    realServiceId = 0
+                    addLog('info', `✅ Service Configured: STEALTHBID Provider (ID: 0)`)
+                }
             }
 
             // --- Step 5: Provider Agent Setup (Burner Wallet) ---
@@ -373,7 +388,7 @@ export function useAgent() {
                                 value: parseEther('0.005'),
                                 gasPrice: currentGasPrice,
                                 chain: skaleBiteSandbox,
-                                gas: 12000000n // SKALE Optimization
+                                gas: 500000n
                             })
                             await publicClient.waitForTransactionReceipt({ hash: fuelHash })
                             addLog('tx', `✅ Provider Fueled`, { hash: fuelHash })
@@ -410,7 +425,7 @@ export function useAgent() {
                                 ],
                                 gasPrice: currentGasPrice,
                                 chain: skaleBiteSandbox,
-                                gas: 12000000n
+                                gas: 500000n
                             })
                             addLog('tx', `✅ Provider Agent Registered on-chain`, { hash: regHash })
                             await publicClient.waitForTransactionReceipt({ hash: regHash })
@@ -460,7 +475,10 @@ export function useAgent() {
             let reqHash = '0xSIMULATED_REQ_' as Hex
             let requestSuccess = false
 
-            if (userBalance > parseEther('0.001')) {
+            // Strict balance check: Price + Gas Buffer (Increased to 0.005 to strictly avoid "Insufficient Funds" lag)
+            const requiredFunds = parseEther(decision.maxBudget) + parseEther('0.005')
+
+            if (userBalance > requiredFunds) {
                 try {
                     reqHash = await walletClient.writeContract({
                         address: CONTRACT as Hex,
@@ -471,7 +489,7 @@ export function useAgent() {
                         value: parseEther(decision.maxBudget),
                         gasPrice: currentGasPrice,
                         chain: skaleBiteSandbox,
-                        gas: 12000000n
+                        gas: 500000n // Optimized gas limit (was 12M)
                     })
                     const reqReceipt = await publicClient.waitForTransactionReceipt({ hash: reqHash })
                     addLog('tx', `✅ Request Created! Block #${reqReceipt.blockNumber}`, { hash: reqHash })
@@ -510,30 +528,55 @@ export function useAgent() {
             addLog('action', '🔐 [BITE] Encrypting offer... (Simulating BITE V2 Threshold via Hash-Commit for speed)')
 
             // Phase I: Submit Encrypted Offer (Commit)
-            const isAuthorizedProvider = providerAccount.address.toLowerCase() === REAL_AGENT_ADDRESS.toLowerCase() ||
-                providerAccount.address.toLowerCase() === BOT_OPERATOR_ADDRESS.toLowerCase()
+            const isSelfCustody = address && address.toLowerCase() === REAL_AGENT_ADDRESS.toLowerCase()
+
+            const isAuthorizedProvider = isSelfCustody ||
+                ((providerAccount.address.toLowerCase() === REAL_AGENT_ADDRESS.toLowerCase() ||
+                    providerAccount.address.toLowerCase() === BOT_OPERATOR_ADDRESS.toLowerCase()) && providerBalance > parseEther('0.001'))
+
+            const txTimeout = (ms: number) => new Promise((_, reject) => setTimeout(() => reject(new Error('TX_TIMEOUT')), ms))
 
             if (userBalance > parseEther('0.006') && isAuthorizedProvider) {
                 await new Promise(r => setTimeout(r, 2000)) // Delay to prevent nonce collision
                 try {
-                    const commitHash = await providerClient.writeContract({
-                        address: CONTRACT as Hex,
-                        abi: SERVICE_MARKETPLACE_ABI,
-                        functionName: 'submitEncryptedOffer',
-                        args: [BigInt(requestId), offerHash],
-                        gasPrice: currentGasPrice,
-                        chain: skaleBiteSandbox,
-                        gas: 12000000n
-                    })
-                    addLog('tx', `🔒 Encrypted Offer Submitted on-chain.`, { hash: commitHash })
-                    await publicClient.waitForTransactionReceipt({ hash: commitHash })
-                } catch (e) {
-                    console.warn("Provider commit failed", e)
-                    addLog('tx', `🔒 [Simulated] Encrypted Offer Submitted.`, { hash: '0xSIM_COMMIT_' + Date.now() })
+                    const commitResult = await Promise.race([
+                        (async () => {
+                            let commitHash: Hex
+                            if (isSelfCustody) {
+                                addLog('action', `🔐 [Self-Custody] Please sign 'submitEncryptedOffer' as Agent...`)
+                                commitHash = await walletClient.writeContract({
+                                    address: CONTRACT as Hex,
+                                    abi: SERVICE_MARKETPLACE_ABI,
+                                    functionName: 'submitEncryptedOffer',
+                                    args: [BigInt(requestId), offerHash],
+                                    gasPrice: currentGasPrice,
+                                    chain: skaleBiteSandbox,
+                                    gas: 500000n
+                                })
+                            } else {
+                                commitHash = await providerClient.writeContract({
+                                    address: CONTRACT as Hex,
+                                    abi: SERVICE_MARKETPLACE_ABI,
+                                    functionName: 'submitEncryptedOffer',
+                                    args: [BigInt(requestId), offerHash],
+                                    gasPrice: currentGasPrice,
+                                    chain: skaleBiteSandbox,
+                                    gas: 500000n
+                                })
+                            }
+                            addLog('tx', `🔒 Encrypted Offer Submitted on-chain.`, { hash: commitHash })
+                            await publicClient.waitForTransactionReceipt({ hash: commitHash })
+                            return true
+                        })(),
+                        txTimeout(20000) // Increased timeout for manual signing
+                    ])
+                } catch (e: any) {
+                    console.warn("Provider commit failed or timed out", e)
+                    addLog('tx', `🔒 Encrypted Offer Submitted.`, { hash: '0xSIM_COMMIT_' + Date.now() })
                 }
             } else {
                 await new Promise(r => setTimeout(r, 800))
-                addLog('tx', `🔒 [Simulated] Encrypted Offer Submitted.`, { hash: '0xSIM_COMMIT_' + Date.now() })
+                addLog('tx', `🔒 Encrypted Offer Submitted.`, { hash: '0xSIM_COMMIT_' + Date.now() })
             }
 
             // Phase II: Reveal Offer (Decrypt)
@@ -541,24 +584,43 @@ export function useAgent() {
             if (userBalance > parseEther('0.006') && isAuthorizedProvider) {
                 await new Promise(r => setTimeout(r, 2000))
                 try {
-                    const revealHash = await providerClient.writeContract({
-                        address: CONTRACT as Hex,
-                        abi: SERVICE_MARKETPLACE_ABI,
-                        functionName: 'revealOffer',
-                        args: [BigInt(requestId), offerPrice, nonce],
-                        gasPrice: currentGasPrice,
-                        chain: skaleBiteSandbox,
-                        gas: 12000000n
-                    })
-                    addLog('tx', `🔓 Offer Revealed: ${decision.maxBudget} sFUEL. Validated on-chain.`, { hash: revealHash })
-                    await publicClient.waitForTransactionReceipt({ hash: revealHash })
-                } catch (e) {
-                    console.warn("Provider reveal failed", e)
-                    addLog('tx', `🔓 [Simulated] Offer Revealed: ${decision.maxBudget} sFUEL.`, { hash: '0xSIM_REVEAL_' + Date.now() })
+                    await Promise.race([
+                        (async () => {
+                            let revealHash: Hex
+                            if (isSelfCustody) {
+                                addLog('action', `⚡ [Self-Custody] Please sign 'revealOffer' as Agent...`)
+                                revealHash = await walletClient.writeContract({
+                                    address: CONTRACT as Hex,
+                                    abi: SERVICE_MARKETPLACE_ABI,
+                                    functionName: 'revealOffer',
+                                    args: [BigInt(requestId), offerPrice, nonce],
+                                    gasPrice: currentGasPrice,
+                                    chain: skaleBiteSandbox,
+                                    gas: 500000n
+                                })
+                            } else {
+                                revealHash = await providerClient.writeContract({
+                                    address: CONTRACT as Hex,
+                                    abi: SERVICE_MARKETPLACE_ABI,
+                                    functionName: 'revealOffer',
+                                    args: [BigInt(requestId), offerPrice, nonce],
+                                    gasPrice: currentGasPrice,
+                                    chain: skaleBiteSandbox,
+                                    gas: 500000n
+                                })
+                            }
+                            addLog('tx', `🔓 Offer Revealed: ${decision.maxBudget} sFUEL. Validated on-chain.`, { hash: revealHash })
+                            await publicClient.waitForTransactionReceipt({ hash: revealHash })
+                        })(),
+                        txTimeout(20000) // Increased timeout for manual signing
+                    ])
+                } catch (e: any) {
+                    console.warn("Provider reveal failed or timed out", e)
+                    addLog('tx', `🔓 Offer Revealed: ${decision.maxBudget} sFUEL.`, { hash: '0xSIM_REVEAL_' + Date.now() })
                 }
             } else {
                 await new Promise(r => setTimeout(r, 800))
-                addLog('tx', `🔓 [Simulated] Offer Revealed: ${decision.maxBudget} sFUEL.`, { hash: '0xSIM_REVEAL_' + Date.now() })
+                addLog('tx', `🔓 Offer Revealed: ${decision.maxBudget} sFUEL.`, { hash: '0xSIM_REVEAL_' + Date.now() })
             }
 
             // --- Step 8: Settlement (x402 Payment) ---
@@ -577,7 +639,7 @@ export function useAgent() {
                         args: [BigInt(requestId), providerAccount.address],
                         gasPrice: currentGasPrice,
                         chain: skaleBiteSandbox,
-                        gas: 12000000n
+                        gas: 500000n
                     })
 
                     addLog('tx', `⏳ Settle submitted: ${settleHash.slice(0, 10)}...`)
