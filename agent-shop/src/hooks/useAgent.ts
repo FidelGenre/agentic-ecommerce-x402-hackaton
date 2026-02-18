@@ -120,6 +120,13 @@ export function useAgent() {
         if (!walletClient || !publicClient || !address) return
 
         try {
+            // 1. Safety Guard for Placeholders
+            if (ALGEBRA_ROUTER_ADDRESS === '0x0000000000000000000000000000000000000000' ||
+                WETH_ADDRESS === '0x0000000000000000000000000000000000000000') {
+                addLog('info', `🧪 Demo Mode: Algebra Contracts not detected. Skipping on-chain swap and proceeding with logic...`)
+                return
+            }
+
             addLog('action', `🔄 Swapping ${formatEther(amountIn)} sFUEL to USDC via Algebra...`)
 
             // 1. Approve Router to spend WETH (if wrapping) or just send ETH
