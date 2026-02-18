@@ -476,11 +476,13 @@ export function useAgent() {
             let requestSuccess = false
 
             // Strict balance check: Price + Gas Buffer (Increased to 0.005 to strictly avoid "Insufficient Funds" lag)
+            // Strict balance check: Price + Gas Buffer (Increased to 0.005 to strictly avoid "Insufficient Funds" lag)
             const requiredFunds = parseEther(decision.maxBudget) + parseEther('0.005')
-
+            let confirmedRequestId: bigint | null = null
+            // Check balance before creating request
             if (userBalance > requiredFunds) {
                 try {
-                    reqHash = await walletClient.writeContract({
+                    const hash = await walletClient.writeContract({
                         address: CONTRACT as Hex,
                         abi: SERVICE_MARKETPLACE_ABI,
                         functionName: 'createRequest',
@@ -491,8 +493,29 @@ export function useAgent() {
                         chain: skaleBiteSandbox,
                         gas: 500000n // Optimized gas limit (was 12M)
                     })
-                    const reqReceipt = await publicClient.waitForTransactionReceipt({ hash: reqHash })
-                    addLog('tx', `✅ Request Created! Block #${reqReceipt.blockNumber}`, { hash: reqHash })
+                    addLog('tx', `✅ Request Sent! Waiting for confirmation...`, { hash })
+                    const reqReceipt = await publicClient.waitForTransactionReceipt({ hash })
+
+                    // Parse logs to find NewRequest event (topic[0] matches signature)
+                    // event NewRequest(uint256 indexed id, address indexed requester, uint256 indexed serviceId, string input, uint256 budget);
+                    // We look for the first log from our contract. The first topic is event sig. The first indexed arg (topic[1]) is ID.
+                    try {
+                        const newRequestLog = reqReceipt.logs.find(l => l.address.toLowerCase() === CONTRACT.toLowerCase())
+                        if (newRequestLog && newRequestLog.topics && newRequestLog.topics[1]) {
+                            confirmedRequestId = BigInt(newRequestLog.topics[1])
+                            addLog('info', `✅ Confirmed Request ID: ${confirmedRequestId} (from logs)`)
+                        }
+                    } catch (e) {
+                        console.warn("Failed to parse logs for ID", e)
+                    }
+
+                    if (!confirmedRequestId) {
+                        // Fallback if logs fail (rare)
+                        confirmedRequestId = expectedRequestId
+                        addLog('info', `⚠️ Using predicted Request ID: ${confirmedRequestId}`)
+                    }
+
+                    addLog('tx', `✅ Request Confirmed! Block #${reqReceipt.blockNumber}`, { hash })
                     requestSuccess = true
                 } catch (err: any) {
                     console.error("Real request failed:", err)
@@ -514,8 +537,8 @@ export function useAgent() {
                 addLog('tx', `✅ [Simulated] Request Created!`, { hash: reqHash + Date.now() })
             }
 
-            // Use the pre-fetched ID as the definitive ID for this session
-            const requestId = Number(expectedRequestId)
+            // Use the confirmed ID as the definitive ID for this session
+            const requestId = Number(confirmedRequestId || expectedRequestId)
 
             // --- Step 7: BITE V2 Negotiation (Commit-Reveal) ---
             addLog('thought', `🤖 Agent Autonomy: Detected new Request ${requestId}. Preparing Offer as STEALTHBID...`)
