@@ -31,7 +31,7 @@ import '@rainbow-me/rainbowkit/styles.css'
 
 const queryClient = new QueryClient()
 
-// 🔌 Connectors: Define which wallets are available
+// 🔌 Connectors: Define which wallets are available.
 // We prioritize Coinbase Wallet for the "Smart Wallet" track.
 const connectors = connectorsForWallets(
     [
