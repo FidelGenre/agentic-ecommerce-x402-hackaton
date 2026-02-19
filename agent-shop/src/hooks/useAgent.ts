@@ -84,10 +84,7 @@ export function useAgent() {
         transport: http('https://base-sepolia-testnet.skalenodes.com/v1/bite-v2-sandbox')
     })
 
-    // REAL AGENT Integration for Revenue Tracking
-    const REAL_AGENT_ADDRESS = '0x83934d36C760BFA75f96C31dA0863c0792fb1a45';
-    // Bot operator address (for autonomous responses)
-    const BOT_OPERATOR_ADDRESS = '0x83934d36C760BFA75f96C31DA0863c0792fb1a45';
+
 
     // Helper to append logs to the UI terminal
     const addLog = useCallback((type: AgentLog['type'], content: string, metadata?: any) => {
@@ -312,9 +309,7 @@ export function useAgent() {
                 for (const result of results) {
                     if (!result || !result.svc || !result.svc[7]) continue // skip unregistered
                     const provider = result.svc[1].toLowerCase()
-                    const isMatch = provider === REAL_AGENT_ADDRESS.toLowerCase() ||
-                        provider === BOT_OPERATOR_ADDRESS.toLowerCase() ||
-                        provider === providerAccount.address.toLowerCase()
+                    const isMatch = provider === providerAccount.address.toLowerCase()
 
                     if (isMatch) {
                         addLog('info', `🎯 Discovery: Found STEALTHBID Service (ID: ${result.id}, Name: ${result.svc[2]})`)
@@ -558,11 +553,9 @@ export function useAgent() {
             addLog('action', '🔐 [BITE] Encrypting offer... (Simulating BITE V2 Threshold via Hash-Commit for speed)')
 
             // Phase I: Submit Encrypted Offer (Commit)
-            const isSelfCustody = address && address.toLowerCase() === REAL_AGENT_ADDRESS.toLowerCase()
+            const isSelfCustody = address && address.toLowerCase() === providerAccount.address.toLowerCase()
 
-            const isAuthorizedProvider = isSelfCustody ||
-                ((providerAccount.address.toLowerCase() === REAL_AGENT_ADDRESS.toLowerCase() ||
-                    providerAccount.address.toLowerCase() === BOT_OPERATOR_ADDRESS.toLowerCase()) && providerBalance > parseEther('0.001'))
+            const isAuthorizedProvider = isSelfCustody || providerBalance > parseEther('0.001')
 
             const txTimeout = (ms: number) => new Promise((_, reject) => setTimeout(() => reject(new Error('TX_TIMEOUT')), ms))
 
