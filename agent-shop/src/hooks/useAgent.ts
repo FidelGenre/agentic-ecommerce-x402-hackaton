@@ -85,7 +85,7 @@ export function useAgent() {
     })
 
     // REAL AGENT Integration for Revenue Tracking
-    const REAL_AGENT_ADDRESS = '0xF9a711B0c6950F3Bb9BC0C56f26420F5ebd92082';
+    const REAL_AGENT_ADDRESS = '0x83934d36C760BFA75f96C31dA0863c0792fb1a45';
     // Bot operator address (for autonomous responses)
     const BOT_OPERATOR_ADDRESS = '0x83934d36C760BFA75f96C31DA0863c0792fb1a45';
 
