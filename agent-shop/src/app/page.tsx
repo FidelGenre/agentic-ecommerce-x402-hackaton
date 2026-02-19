@@ -20,7 +20,7 @@ export default function Home() {
   const router = useRouter()
 
   const handleLaunch = () => {
-    // Navigate to the real app
+    //Navigate to the real app 
     router.push('/dashboard')
   }
 
