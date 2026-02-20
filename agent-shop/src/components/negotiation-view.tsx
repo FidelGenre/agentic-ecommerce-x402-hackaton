@@ -8,6 +8,52 @@ import { AgentPersona } from './agent-selector'
 import { Item } from './item-selector'
 import { Zap, Trophy, TrendingDown, Clock, Lock as LockIcon, Shield, Box, Globe, Activity, Users } from 'lucide-react'
 
+// Helper component for typewriter effect
+function TypewriterEffect({ text, speed = 15, onComplete }: { text: string, speed?: number, onComplete?: () => void }) {
+    const [displayedText, setDisplayedText] = useState('')
+    const [currentIndex, setCurrentIndex] = useState(0)
+
+    useEffect(() => {
+        if (currentIndex < text.length) {
+            const timeout = setTimeout(() => {
+                setDisplayedText(prev => prev + text[currentIndex])
+                setCurrentIndex(prev => prev + 1)
+            }, speed)
+            return () => clearTimeout(timeout)
+        } else if (onComplete) {
+            onComplete()
+        }
+    }, [currentIndex, text, speed, onComplete])
+
+    // Extract potential emoji prefixes for styling
+    const renderContent = () => {
+        if (displayedText.startsWith('🧠')) {
+            return <><span className="text-pink-400">🧠</span>{displayedText.slice(2)}</>
+        }
+        if (displayedText.startsWith('⚙️')) {
+            return <><span className="text-amber-400">⚙️</span>{displayedText.slice(2)}</>
+        }
+        if (displayedText.startsWith('☑️')) {
+            return <><span className="text-cyan-400">☑️</span>{displayedText.slice(2)}</>
+        }
+        if (displayedText.startsWith('✅')) {
+            return <><span className="text-green-400">✅</span>{displayedText.slice(2)}</>
+        }
+        if (displayedText.startsWith('📝')) {
+            return <><span className="text-yellow-400">📝</span>{displayedText.slice(2)}</>
+        }
+        if (displayedText.startsWith('🔐') || displayedText.startsWith('🔒') || displayedText.startsWith('🔓')) {
+            return <><span className="text-purple-400">{displayedText.slice(0, 2)}</span>{displayedText.slice(2)}</>
+        }
+        if (displayedText.startsWith('⚡')) {
+            return <><span className="text-yellow-400">⚡</span>{displayedText.slice(1)}</>
+        }
+        return displayedText
+    }
+
+    return <span>{renderContent()}</span>
+}
+
 // Define a type for an agent's runtime state in the battle
 export interface BattleAgent {
     persona: AgentPersona
@@ -130,7 +176,7 @@ export function NegotiationView({ agents, targetItem, round, onSettle, isSettled
                                                     log.type === 'error' ? "bg-red-500/5 border-red-500/10 text-red-400" :
                                                         "bg-white/5 border-white/5 text-white/40"
                                         )}>
-                                            {log.content}
+                                            <TypewriterEffect text={log.content} speed={10} />
 
                                             {log.type === 'action' && log.content.includes('FUEL') && (
                                                 <div className="mt-2 md:mt-3 pt-2 md:pt-3 border-t border-white/5 flex items-center gap-2">

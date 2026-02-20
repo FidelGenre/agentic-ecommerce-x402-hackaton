@@ -1,7 +1,7 @@
 import { AgentLog } from '@/hooks/useAgent'
 import { Item } from '@/components/item-selector'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { Box, Circle, Globe, Shield, Zap, TrendingUp, DollarSign, Activity } from 'lucide-react'
 
@@ -9,6 +9,52 @@ interface AgentTerminalProps {
     logs: AgentLog[]
     status: string
     targetItem?: Item | null
+}
+
+// Helper component for typewriter effect
+function TypewriterEffect({ text, speed = 15, onComplete }: { text: string, speed?: number, onComplete?: () => void }) {
+    const [displayedText, setDisplayedText] = useState('')
+    const [currentIndex, setCurrentIndex] = useState(0)
+
+    useEffect(() => {
+        if (currentIndex < text.length) {
+            const timeout = setTimeout(() => {
+                setDisplayedText(prev => prev + text[currentIndex])
+                setCurrentIndex(prev => prev + 1)
+            }, speed)
+            return () => clearTimeout(timeout)
+        } else if (onComplete) {
+            onComplete()
+        }
+    }, [currentIndex, text, speed, onComplete])
+
+    // Extract potential emoji prefixes for styling
+    const renderContent = () => {
+        if (displayedText.startsWith('🧠')) {
+            return <><span className="text-pink-400">🧠</span>{displayedText.slice(2)}</>
+        }
+        if (displayedText.startsWith('⚙️')) {
+            return <><span className="text-amber-400">⚙️</span>{displayedText.slice(2)}</>
+        }
+        if (displayedText.startsWith('☑️')) {
+            return <><span className="text-cyan-400">☑️</span>{displayedText.slice(2)}</>
+        }
+        if (displayedText.startsWith('✅')) {
+            return <><span className="text-green-400">✅</span>{displayedText.slice(2)}</>
+        }
+        if (displayedText.startsWith('📝')) {
+            return <><span className="text-yellow-400">📝</span>{displayedText.slice(2)}</>
+        }
+        if (displayedText.startsWith('🔐') || displayedText.startsWith('🔒') || displayedText.startsWith('🔓')) {
+            return <><span className="text-purple-400">{displayedText.slice(0, 2)}</span>{displayedText.slice(2)}</>
+        }
+        if (displayedText.startsWith('⚡')) {
+            return <><span className="text-yellow-400">⚡</span>{displayedText.slice(1)}</>
+        }
+        return displayedText
+    }
+
+    return <span>{renderContent()}</span>
 }
 
 export function AgentTerminal({ logs, status, targetItem }: AgentTerminalProps) {
@@ -111,7 +157,7 @@ export function AgentTerminal({ logs, status, targetItem }: AgentTerminalProps) 
                                                 log.type === 'action' ? 'group-hover:text-cyan-200' :
                                                     log.type === 'tx' ? 'group-hover:text-green-300' : 'group-hover:text-white/60'
                                         )}>
-                                            {log.content}
+                                            <TypewriterEffect text={log.content} speed={10} />
                                         </p>
                                     </div>
                                 </motion.div>

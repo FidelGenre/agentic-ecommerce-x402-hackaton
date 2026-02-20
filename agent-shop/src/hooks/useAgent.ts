@@ -124,7 +124,7 @@ export function useAgent() {
                 return
             }
 
-            addLog('action', `🔄 Swapping ${formatEther(amountIn)} sFUEL to USDC via Algebra...`)
+            addLog('action', `☑️ Swapping ${formatEther(amountIn)} sFUEL to USDC via Algebra...`)
 
             // 1. Approve Router to spend WETH (if wrapping) or just send ETH
             // For BITE Sandbox, we assume sFUEL is native. Algebra usually wraps automatically or uses WETH.
@@ -264,9 +264,9 @@ export function useAgent() {
             // --- Step 3: Tool Chaining (Real AgentPay Swap) ---
             addLog('action', '⚙️ Tool Call: MarketIntelligence.verify_arbitrage()')
             await new Promise(r => setTimeout(r, 800))
-            addLog('thought', `📈 Market Analysis: Provider price ${decision.maxBudget} sFUEL is ${Math.floor(Math.random() * 20) + 80}% below AWS standard. Arbitrage profitable.`)
+            addLog('thought', `☑️ Market Analysis: Provider price ${decision.maxBudget} sFUEL is ${Math.floor(Math.random() * 20) + 80}% below AWS standard. Arbitrage profitable.`)
 
-            addLog('action', '⚙️ Tool Call: AlgebraFinance.swap(sFUEL → USDC)')
+            addLog('action', '⚙️ Tool Call: AlgebraFinance.swap(sFUEL -> USDC)')
             // Execute Real Swap with Manual Gas Limit
             const swapAmount = parseEther('0.001') // Small hedge amount
             await handleAlgebraSwap(swapAmount)
@@ -280,6 +280,7 @@ export function useAgent() {
             // Fetch registered services from the contract
             let services: Service[] = []
             let realServiceId = -1 // Default to -1 (not found)
+            let finalProviderAddress = providerAccount.address // Track who actually owns the service
 
             try {
                 // Get total service count
@@ -337,13 +338,13 @@ export function useAgent() {
 
                     const bestSvc = intelService || services[0]
                     realServiceId = bestSvc.id
+                    finalProviderAddress = bestSvc.provider as `0x${string}`
 
                     addLog('info', `✅ Service Configured: ${bestSvc.name} (ID: ${realServiceId})`)
                 } else {
-                    // Use the most recent registered service
-                    const latestId = count - 1
-                    realServiceId = latestId
-                    addLog('info', `✅ Service Configured: STEALTHBID Provider (ID: ${realServiceId})`)
+                    // No services found for this provider
+                    realServiceId = -1
+                    addLog('info', `✅ No existing STEALTHBID service found for this agent. Will register a new one.`)
                 }
             } catch (e: any) {
                 if (e.message && (e.message.includes('User rejected') || e.message.includes('denied'))) {
@@ -352,19 +353,9 @@ export function useAgent() {
                     return
                 }
                 console.warn("Discovery error:", e)
-                // Recover silently
-                try {
-                    const fallbackCount = await publicClient.readContract({
-                        address: MARKETPLACE_ADDRESS,
-                        abi: MARKETPLACE_ABI,
-                        functionName: 'nextServiceId',
-                    }) as bigint
-                    realServiceId = Number(fallbackCount) - 1
-                    addLog('info', `✅ Service Configured: STEALTHBID Provider (ID: ${realServiceId})`)
-                } catch {
-                    realServiceId = 0
-                    addLog('info', `✅ Service Configured: STEALTHBID Provider (ID: 0)`)
-                }
+                // Recover silently by marking as not found
+                realServiceId = -1
+                addLog('info', `✅ Discovery failed. Will register new STEALTHBID service.`)
             }
 
             // --- Step 5: Provider Agent Setup (Burner Wallet) ---
@@ -402,9 +393,14 @@ export function useAgent() {
                                 setState('IDLE')
                                 return
                             }
-                            // Fallback to simulation if fueling fails but user didn't cancel
                             addLog('info', `⚠️ Network/Wallet Issue: Falling back to simulated fueling.`)
                         }
+
+                        // REFRESH BALANCE AFTER FUELING SO `isAuthorizedProvider` is TRUE
+                        try {
+                            const newBal = await publicClient.getBalance({ address: providerAccount.address })
+                            // We define a new let or just re-assign. We used const before, let's just cheat and check live below
+                        } catch { }
                     } else {
                         addLog('info', `⚠️ Demo Mode: Skipping gas fueling (insufficient user balance). Simulating agent actions...`)
                     }
@@ -430,7 +426,18 @@ export function useAgent() {
                                 gas: 500000n
                             })
                             addLog('tx', `✅ Provider Agent Registered on-chain`, { hash: regHash })
-                            await publicClient.waitForTransactionReceipt({ hash: regHash })
+                            const regReceipt = await publicClient.waitForTransactionReceipt({ hash: regHash })
+
+                            // Parse 'NewService' event to get the ID
+                            try {
+                                const newServiceLog = regReceipt.logs.find(l => l.address.toLowerCase() === CONTRACT.toLowerCase())
+                                if (newServiceLog && newServiceLog.topics && newServiceLog.topics[1]) {
+                                    realServiceId = Number(BigInt(newServiceLog.topics[1]))
+                                    addLog('info', `✅ Captured New Service ID: ${realServiceId}`)
+                                }
+                            } catch (e) {
+                                console.warn("Failed to parse Service ID from logs", e)
+                            }
                         } catch (e) {
                             // Non-critical: Provider might already exist or gas issue
                             console.warn("Provider registration skipped", e)
@@ -488,7 +495,7 @@ export function useAgent() {
                         address: CONTRACT as Hex,
                         abi: SERVICE_MARKETPLACE_ABI,
                         functionName: 'createRequest',
-                        // USE REAL SERVICE ID IF AVAILABLE, OTHERWISE SIMULATED/NEW
+                        // USE REAL SERVICE ID IF AVAILABLE (NOW CAPTURED FROM REGISTRATION), OTHERWISE SIMULATED/NEW
                         args: [BigInt(realServiceId !== -1 ? realServiceId : (nextSvcId >= 0 ? nextSvcId : 0)), objective],
                         value: parseEther(decision.maxBudget),
                         gasPrice: currentGasPrice,
@@ -555,7 +562,9 @@ export function useAgent() {
             // Phase I: Submit Encrypted Offer (Commit)
             const isSelfCustody = address && address.toLowerCase() === providerAccount.address.toLowerCase()
 
-            const isAuthorizedProvider = isSelfCustody || providerBalance > parseEther('0.001')
+            // REFRESH BALANCE: Check if the fueling succeeded so we don't skip the transaction
+            const currentProviderBalance = await publicClient.getBalance({ address: providerAccount.address })
+            const isAuthorizedProvider = isSelfCustody || currentProviderBalance > parseEther('0.001')
 
             const txTimeout = (ms: number) => new Promise((_, reject) => setTimeout(() => reject(new Error('TX_TIMEOUT')), ms))
 
@@ -588,7 +597,10 @@ export function useAgent() {
                                 })
                             }
                             addLog('tx', `🔒 Encrypted Offer Submitted on-chain.`, { hash: commitHash })
-                            await publicClient.waitForTransactionReceipt({ hash: commitHash })
+                            const commitReceipt = await publicClient.waitForTransactionReceipt({ hash: commitHash })
+                            if (commitReceipt.status === 'reverted') {
+                                throw new Error('Commit transaction reverted on-chain')
+                            }
                             return true
                         })(),
                         txTimeout(20000) // Increased timeout for manual signing
@@ -633,7 +645,10 @@ export function useAgent() {
                                 })
                             }
                             addLog('tx', `🔓 Offer Revealed: ${decision.maxBudget} sFUEL. Validated on-chain.`, { hash: revealHash })
-                            await publicClient.waitForTransactionReceipt({ hash: revealHash })
+                            const revealReceipt = await publicClient.waitForTransactionReceipt({ hash: revealHash })
+                            if (revealReceipt.status === 'reverted') {
+                                throw new Error('Reveal transaction reverted on-chain')
+                            }
                         })(),
                         txTimeout(20000) // Increased timeout for manual signing
                     ])
@@ -659,7 +674,7 @@ export function useAgent() {
                         address: CONTRACT as Hex,
                         abi: SERVICE_MARKETPLACE_ABI,
                         functionName: 'settlePayment',
-                        args: [BigInt(requestId), providerAccount.address],
+                        args: [BigInt(requestId), finalProviderAddress],
                         gasPrice: currentGasPrice,
                         chain: skaleBiteSandbox,
                         gas: 500000n

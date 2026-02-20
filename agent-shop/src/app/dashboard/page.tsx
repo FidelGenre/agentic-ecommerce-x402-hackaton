@@ -562,14 +562,17 @@ export default function Dashboard() {
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[250] flex items-center justify-center bg-black/90 backdrop-blur-xl p-4">
                         <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-[#1a1b26] border border-white/10 p-8 rounded-3xl w-full max-w-md space-y-6 shadow-2xl relative">
                             <button onClick={() => setShowAddAgentModal(false)} className="absolute top-4 right-4 p-2 hover:bg-white/5 rounded-xl transition-colors"><XIcon className="w-5 h-5 text-white/30" /></button>
-                            <h3 className="text-2xl font-black uppercase tracking-tighter">Create Custom Agent</h3>
+                            <h3 className="text-2xl font-black uppercase tracking-tighter">Create Agent</h3>
                             <div className="space-y-4">
                                 <input value={newAgentBase.name} onChange={e => setNewAgentBase(p => ({ ...p, name: e.target.value }))} placeholder="Agent Name" className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-xs font-bold" />
-                                <select value={newAgentBase.strategy} onChange={e => setNewAgentBase(p => ({ ...p, strategy: e.target.value }))} className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-xs font-bold appearance-none">
-                                    <option value="aggressive">Aggressive</option>
-                                    <option value="analytical">Analytical</option>
-                                    <option value="diplomatic">Diplomatic</option>
-                                </select>
+                                <div>
+                                    <label className="text-[10px] text-white/40 uppercase tracking-widest font-bold block mb-2">Select Execution Strategy</label>
+                                    <select value={newAgentBase.strategy} onChange={e => setNewAgentBase(p => ({ ...p, strategy: e.target.value }))} className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-xs font-bold appearance-none">
+                                        <option value="aggressive" className="bg-[#1a1b26] text-white">Aggressive</option>
+                                        <option value="analytical" className="bg-[#1a1b26] text-white">Analytical</option>
+                                        <option value="diplomatic" className="bg-[#1a1b26] text-white">Diplomatic</option>
+                                    </select>
+                                </div>
                                 <button onClick={handleAddAgentFinal} className="w-full py-5 bg-purple-600 rounded-2xl font-black uppercase">Initialize Agent</button>
                             </div>
                         </motion.div>

@@ -17,7 +17,7 @@ export const AGENT_PERSONAS: AgentPersona[] = [
 
     {
         id: 'shark-buy',
-        name: 'SHARK (Arbitrage)',
+        name: 'SHARK.BUY (Aggressive Arbitrage)',
         role: 'Aggressive Strategy',
         description: 'Executes "Arbitrage Pro" service. Hunts for price discrepancies on SKALE/Base.',
         icon: Skull,
@@ -25,7 +25,7 @@ export const AGENT_PERSONAS: AgentPersona[] = [
     },
     {
         id: 'snipe-bot',
-        name: 'SNIPE (Intel)',
+        name: 'SNIPE.BOT (Precision Intel)',
         role: 'Analytical Strategy',
         description: 'Executes "Market Intel" service. Scans mempool for precision entry points.',
         icon: Bot,
@@ -33,7 +33,7 @@ export const AGENT_PERSONAS: AgentPersona[] = [
     },
     {
         id: 'whale-cap',
-        name: 'WHALE (Yield)',
+        name: 'WHALE.CAP (High-Volume Yield)',
         role: 'High-Volume Strategy',
         description: 'Executes "Yield Scan" service. Allocates capital to highest APY pools.',
         icon: Briefcase,
@@ -56,10 +56,11 @@ export function AgentSelector({ agents, selectedAgents, onToggle, onSelectAll, o
 
     return (
         <div className="w-full space-y-4">
-            <div className="flex justify-between items-center">
-                <h3 className="text-sm font-medium text-white/50 uppercase tracking-wider">
-                    {mode === 'single' ? 'Select Execution Strategy' : 'Select Active Protocols (Min 2)'}
-                </h3>
+
+            <div className="flex justify-between items-center mt-0">
+                <h4 className="text-[11px] font-bold text-white/50 uppercase tracking-widest">
+                    {mode === 'single' ? 'SELECT YOUR AGENT' : 'SELECT ACTIVE AGENTS'}
+                </h4>
                 {mode === 'multi' && onSelectAll && (
                     <button
                         onClick={onSelectAll}
