@@ -92,32 +92,32 @@ export function NegotiationView({ agents, targetItem, round, onSettle, isSettled
     return (
         <div className="w-full flex flex-col h-full space-y-4 md:space-y-6">
             {/* Item Header (Agents OS Style) */}
-            <div className="p-4 md:p-8 rounded-[1.5rem] md:rounded-[2.5rem] bg-white/[0.02] border border-white/5 flex flex-col md:flex-row items-start justify-between gap-6 group hover:bg-white/[0.04] transition-all">
-                <div className="flex items-start gap-4 md:gap-8">
-                    <div className="w-14 h-14 md:w-20 md:h-20 rounded-2xl md:rounded-3xl bg-cyan-500/10 flex items-center justify-center border border-cyan-500/20 group-hover:scale-105 transition-transform shadow-[0_0_30px_rgba(34,211,238,0.1)] shrink-0">
-                        <targetItem.icon className="w-7 h-7 md:w-10 md:h-10 text-cyan-400" />
+            <div className="p-3 md:p-5 rounded-3xl bg-white/[0.02] border border-white/5 flex flex-col md:flex-row items-start justify-between gap-4 group hover:bg-white/[0.04] transition-all">
+                <div className="flex items-start gap-3 md:gap-5">
+                    <div className="w-10 h-10 md:w-14 md:h-14 rounded-xl md:rounded-2xl bg-cyan-500/10 flex items-center justify-center border border-cyan-500/20 group-hover:scale-105 transition-transform shadow-[0_0_30px_rgba(34,211,238,0.1)] shrink-0">
+                        <targetItem.icon className="w-5 h-5 md:w-7 md:h-7 text-cyan-400" />
                     </div>
-                    <div className="pt-0.5">
-                        <div className="flex flex-wrap items-center gap-2 md:gap-4 mb-1 md:mb-2">
-                            <h2 className="text-lg md:text-2xl font-black uppercase tracking-tighter text-white">{targetItem.name}</h2>
-                            <span className="px-2 py-0.5 md:px-3 md:py-1 rounded-lg bg-cyan-500/20 text-cyan-400 text-[8px] md:text-[10px] font-black uppercase tracking-widest border border-cyan-500/20">
+                    <div className="pt-0">
+                        <div className="flex flex-wrap items-center gap-2 md:gap-3 mb-0.5 md:mb-1">
+                            <h2 className="text-base md:text-lg font-black uppercase tracking-tighter text-white">{targetItem.name}</h2>
+                            <span className="px-1.5 py-0.5 rounded-md bg-cyan-500/20 text-cyan-400 text-[7px] md:text-[8px] font-black uppercase tracking-widest border border-cyan-500/20">
                                 {targetItem.rarity || 'RARE'}
                             </span>
                         </div>
-                        <div className="flex flex-wrap items-center gap-3 md:gap-6 text-white/20 text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em]">
-                            <span className="flex items-center gap-1.5"><Globe className="w-3 md:w-3.5 h-3 md:h-3.5" /> SKALE</span>
-                            <span className="flex items-center gap-1.5"><Shield className="w-3 md:w-3.5 h-3 md:h-3.5" /> MESH</span>
-                            <span className="flex items-center gap-1.5 text-yellow-500/50">★ {targetItem.trustScore}</span>
+                        <div className="flex flex-wrap items-center gap-2 md:gap-4 text-white/20 text-[7px] md:text-[8px] font-black uppercase tracking-[0.2em]">
+                            <span className="flex items-center gap-1"><Globe className="w-2.5 md:w-3 h-2.5 md:h-3" /> SKALE</span>
+                            <span className="flex items-center gap-1"><Shield className="w-2.5 md:w-3 h-2.5 md:h-3" /> MESH</span>
+                            <span className="flex items-center gap-1 text-yellow-500/50">★ {targetItem.trustScore}</span>
                         </div>
                     </div>
                 </div>
 
-                <div className="w-full md:w-auto text-left md:text-right border-t md:border-t-0 border-white/5 pt-4 md:pt-1">
-                    <div className="text-white/20 text-[9px] md:text-[10px] font-black uppercase tracking-widest mb-1 md:mb-2 px-3 py-1 bg-white/5 rounded-full inline-block">
+                <div className="w-full md:w-auto text-left md:text-right border-t md:border-t-0 border-white/5 pt-3 md:pt-0">
+                    <div className="text-white/20 text-[8px] md:text-[9px] font-black uppercase tracking-widest mb-1 px-3 py-1 bg-white/5 rounded-full inline-block">
                         Round {round}/5
                     </div>
-                    <div className="text-2xl md:text-3xl font-black text-green-400 font-mono tracking-tighter">
-                        {bestBid > 0 ? bestBid.toFixed(5) : targetItem.basePrice.toFixed(5)} <span className="text-sm">sFUEL</span>
+                    <div className="text-xl md:text-2xl font-black text-green-400 font-mono tracking-tighter">
+                        {bestBid > 0 ? bestBid.toFixed(5) : targetItem.basePrice.toFixed(5)} <span className="text-xs">sFUEL</span>
                     </div>
                     <div className="text-[9px] md:text-[10px] font-black text-white/40 uppercase tracking-widest mt-1">
                         {leader ? `Leading: ${leader.persona.name}` : `Min. Bid: ${targetItem.basePrice}`}

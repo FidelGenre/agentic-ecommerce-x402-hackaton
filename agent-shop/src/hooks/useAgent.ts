@@ -252,7 +252,7 @@ export function useAgent() {
                 // Fallback heuristic if API fails
                 decision = {
                     action: 'SEARCH',
-                    reasoning: 'Analyzing compute requirements: prioritizing cost-efficiency and low latency on SKALE.',
+                    reasoning: 'Analyzing compute requirements: prioritizing cost-efficiency and low latency providers on SKALE network.',
                     serviceType: 'General Compute',
                     maxBudget: '0.0001', // Lower default for real txs
                     searchQuery: 'compute',
@@ -344,7 +344,7 @@ export function useAgent() {
                 } else {
                     // No services found for this provider
                     realServiceId = -1
-                    addLog('info', `✅ No existing STEALTHBID service found for this agent. Will register a new one.`)
+                    addLog('info', `✅No existing STEALTHBID service found for this agent. Will register a new one.`)
                 }
             } catch (e: any) {
                 if (e.message && (e.message.includes('User rejected') || e.message.includes('denied'))) {
@@ -355,7 +355,7 @@ export function useAgent() {
                 console.warn("Discovery error:", e)
                 // Recover silently by marking as not found
                 realServiceId = -1
-                addLog('info', `✅ Discovery failed. Will register new STEALTHBID service.`)
+                addLog('info', `✅Discovery failed. Will register new STEALTHBID service.`)
             }
 
             // --- Step 5: Provider Agent Setup (Burner Wallet) ---
@@ -433,7 +433,7 @@ export function useAgent() {
                                 const newServiceLog = regReceipt.logs.find(l => l.address.toLowerCase() === CONTRACT.toLowerCase())
                                 if (newServiceLog && newServiceLog.topics && newServiceLog.topics[1]) {
                                     realServiceId = Number(BigInt(newServiceLog.topics[1]))
-                                    addLog('info', `✅ Captured New Service ID: ${realServiceId}`)
+                                    addLog('info', `✅Captured New Service ID: ${realServiceId}`)
                                 }
                             } catch (e) {
                                 console.warn("Failed to parse Service ID from logs", e)
@@ -502,7 +502,7 @@ export function useAgent() {
                         chain: skaleBiteSandbox,
                         gas: 500000n // Optimized gas limit (was 12M)
                     })
-                    addLog('tx', `✅ Request Sent! Waiting for confirmation...`, { hash })
+                    addLog('tx', `✅Request Sent! Waiting for confirmation...`, { hash })
                     const reqReceipt = await publicClient.waitForTransactionReceipt({ hash })
 
                     // Parse logs to find NewRequest event (topic[0] matches signature)
@@ -512,7 +512,7 @@ export function useAgent() {
                         const newRequestLog = reqReceipt.logs.find(l => l.address.toLowerCase() === CONTRACT.toLowerCase())
                         if (newRequestLog && newRequestLog.topics && newRequestLog.topics[1]) {
                             confirmedRequestId = BigInt(newRequestLog.topics[1])
-                            addLog('info', `✅ Confirmed Request ID: ${confirmedRequestId} (from logs)`)
+                            addLog('info', `✅Confirmed Request ID: ${confirmedRequestId} (from logs)`)
                         }
                     } catch (e) {
                         console.warn("Failed to parse logs for ID", e)
@@ -524,7 +524,7 @@ export function useAgent() {
                         addLog('info', `⚠️ Using predicted Request ID: ${confirmedRequestId}`)
                     }
 
-                    addLog('tx', `✅ Request Confirmed! Block #${reqReceipt.blockNumber}`, { hash })
+                    addLog('tx', `✅Request Confirmed! Block #${reqReceipt.blockNumber}`, { hash })
                     requestSuccess = true
                 } catch (err: any) {
                     console.error("Real request failed:", err)
@@ -683,7 +683,7 @@ export function useAgent() {
                     addLog('tx', `⏳ Settle submitted: ${settleHash.slice(0, 10)}...`)
                     const settleReceipt = await publicClient.waitForTransactionReceipt({ hash: settleHash })
 
-                    addLog('tx', `✅ [x402] Payment Settled! Gasless.`, {
+                    addLog('tx', `✅[x402] Payment Settled! Gasless.`, {
                         hash: settleHash,
                         block: Number(settleReceipt.blockNumber),
                         gas: settleReceipt.gasUsed.toString(),

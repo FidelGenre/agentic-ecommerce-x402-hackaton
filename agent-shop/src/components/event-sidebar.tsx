@@ -69,7 +69,7 @@ export function EventSidebar({ logs, deals, onClose, onDealClick }: EventSidebar
                                     </div>
 
                                     <div className={cn(
-                                        "text-xs leading-relaxed font-bold",
+                                        "text-xs leading-relaxed font-bold break-all",
                                         log.type === 'error' ? 'text-red-400' :
                                             log.type === 'tx' ? 'text-purple-300' :
                                                 log.type === 'action' ? 'text-cyan-200' : 'text-white/70'

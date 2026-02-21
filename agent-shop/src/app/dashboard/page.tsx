@@ -137,11 +137,11 @@ export default function Dashboard() {
     const [showAddItemModal, setShowAddItemModal] = useState(false)
     const [showAddAgentModal, setShowAddAgentModal] = useState(false)
 
-    const [newItemBase, setNewItemBase] = useState({ name: '', price: '0.5', rarity: 'rare' })
+    const [newItemBase, setNewItemBase] = useState({ name: '', price: '0.5', rarity: 'rare', provider: '' })
     const [newAgentBase, setNewAgentBase] = useState({ name: '', strategy: 'aggressive' })
 
     const isReadyToNegotiate = mode === '1v1' ? !!selectedItem : !!(selectedItem && selectedAgentIds.length >= 2)
-    const isNegotiating = agentState !== 'IDLE'
+    const isNegotiating = agentState !== 'IDLE' && agentState !== 'COMPLETED' && agentState !== 'ERROR'
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
@@ -318,13 +318,13 @@ export default function Dashboard() {
             basePrice: parseFloat(newItemBase.price),
             rarity: newItemBase.rarity as any,
             icon: Box,
-            provider: 'User Defined',
+            provider: newItemBase.provider || 'User Defined',
             trustScore: 5.0
         }
         setItems(p => [newItem, ...p])
         setSelectedItem(newItem)
         setShowAddItemModal(false)
-        setNewItemBase({ name: '', price: '0.5', rarity: 'rare' })
+        setNewItemBase({ name: '', price: '0.5', rarity: 'rare', provider: '' })
     }
 
     const handleAddAgentFinal = () => {
@@ -332,7 +332,7 @@ export default function Dashboard() {
         const newAgent: AgentPersona = {
             id: `agent_${crypto.randomUUID().split('-')[0]}`,
             name: newAgentBase.name,
-            role: 'Custom Agent',
+            role: `${newAgentBase.strategy === 'aggressive' ? 'Aggressive' : newAgentBase.strategy === 'analytical' ? 'Analytical' : 'Diplomatic'} Strategy`,
             description: `A ${newAgentBase.strategy} negotiator.`,
             icon: Bot,
             style: newAgentBase.strategy as any
@@ -354,6 +354,7 @@ export default function Dashboard() {
 
     const handleDeploy = async () => {
         if (mode === '1v1') {
+            if (agentState === 'COMPLETED' || agentState === 'ERROR') resetAgent()
             const persona = agentsList.find(p => p.id === selected1v1AgentId) || AGENT_PERSONAS.find(p => p.id === selected1v1AgentId)
             const personaDesc = persona ? `${persona.name} (${persona.role}) - ${persona.description}` : undefined
             processRequest(objective.trim() || 'Negotiate best deal', personaDesc)
@@ -390,10 +391,12 @@ export default function Dashboard() {
                     </div>
 
                     <div className="absolute left-1/2 -translate-x-1/2 hidden lg:flex items-center gap-4">
-                        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10">
-                            <Users className="w-3 h-3 text-white/40" />
-                            <span className="text-[10px] font-bold text-white/60 uppercase">Protocols</span>
-                            <span className="text-[10px] font-black">{agentsList.length}</span>
+                        <div className="flex gap-4">
+                            <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-4 py-2 rounded-2xl">
+                                <Users className="w-4 h-4 text-white/40" />
+                                <span className="text-[10px] font-bold text-white/60 uppercase">Agents</span>
+                                <span className="text-xs font-black text-white ml-2">{agentsList.length}</span>
+                            </div>
                         </div>
                         <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10">
                             <Zap className="w-3 h-3 text-cyan-400" />
@@ -503,7 +506,7 @@ export default function Dashboard() {
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
                                         <label className="text-[9px] text-white/40 uppercase block mb-1">Final Price</label>
-                                        <p className="text-2xl font-black text-green-400 font-mono">{receipt.cartMandate?.finalPrice} sFUEL</p>
+                                        <p className="text-xl md:text-2xl font-black text-green-400 font-mono break-all">{receipt.cartMandate?.finalPrice} sFUEL</p>
                                     </div>
                                     <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
                                         <label className="text-[9px] text-white/40 uppercase block mb-1">Target</label>
@@ -550,7 +553,8 @@ export default function Dashboard() {
                             <button onClick={() => setShowAddItemModal(false)} className="absolute top-4 right-4 p-2 hover:bg-white/5 rounded-xl transition-colors"><XIcon className="w-5 h-5 text-white/30" /></button>
                             <h3 className="text-2xl font-black uppercase tracking-tighter">Create Target Item</h3>
                             <div className="space-y-4">
-                                <input value={newItemBase.name} onChange={e => setNewItemBase(p => ({ ...p, name: e.target.value }))} placeholder="Item Name" className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-xs font-bold" />
+                                <input value={newItemBase.name} onChange={e => setNewItemBase(p => ({ ...p, name: e.target.value }))} placeholder="Item Name / Opportunity" className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-xs font-bold" />
+                                <input value={newItemBase.provider!} onChange={e => setNewItemBase(p => ({ ...p, provider: e.target.value }))} placeholder="Platform / Source (e.g. Uniswap)" className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-xs font-bold" />
                                 <input type="number" value={newItemBase.price} onChange={e => setNewItemBase(p => ({ ...p, price: e.target.value }))} placeholder="Base Price" className="w-full bg-white/5 border border-white/10 p-4 rounded-2xl text-xs font-bold" />
                                 <button onClick={handleAddItemFinal} className="w-full py-5 bg-indigo-600 rounded-2xl font-black uppercase">Deploy Target</button>
                             </div>

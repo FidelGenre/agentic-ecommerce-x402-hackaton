@@ -59,7 +59,7 @@ export function AgentSelector({ agents, selectedAgents, onToggle, onSelectAll, o
 
             <div className="flex justify-between items-center mt-0">
                 <h4 className="text-[11px] font-bold text-white/50 uppercase tracking-widest">
-                    {mode === 'single' ? 'SELECT YOUR AGENT' : 'SELECT ACTIVE AGENTS'}
+                    {mode === 'single' ? 'SELECT YOUR AGENT' : 'SELECT BUYER AGENTS (MIN 2)'}
                 </h4>
                 {mode === 'multi' && onSelectAll && (
                     <button
