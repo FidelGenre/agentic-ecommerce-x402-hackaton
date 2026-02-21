@@ -1,8 +1,5 @@
 /**
- * useMultiAgent - Battle Royale Logic Hook (REAL ON-CHAIN VERSION) ⚔️
- * 
- * Manages the "Battle Royale" mode where multiple AI Agents compete for a deal.
- * Each agent operates autonomously with its own wallet and BITE V2 strategy.
+ * Battle Royale Logic Hook using SKALE BITE V2.
  */
 'use client'
 
@@ -54,7 +51,6 @@ export function useMultiAgent() {
     const { address, isConnected } = useAccount()
     const { data: walletClient } = useWalletClient({ chainId: Number(CHAIN_ID) })
     const publicClient = usePublicClient({ chainId: Number(CHAIN_ID) })
-    const { switchChainAsync } = useSwitchChain()
 
     const addLog = useCallback((type: AgentLog['type'], content: string, metadata?: AgentLog['metadata']) => {
         setLogs(prev => [...prev.slice(-49), {
@@ -138,11 +134,11 @@ export function useMultiAgent() {
             addLog('error', `⚠️ Funding Issue: ${err instanceof Error ? err.message : 'Unknown'}`)
         }
 
-        // 4. Parallel Bidding (Commit Hash)
+        // 4. Parallel Bidding
         setState('BIDDING')
         addLog('info', `🔐 BITE V2: Agents submitting encrypted commitments...`)
 
-        // Find or Register services for each
+        // Service Registration
         const serviceIds = await Promise.all(participants.map(async (p, i) => {
             try {
                 const reg = await p.client.writeContract({
@@ -167,7 +163,7 @@ export function useMultiAgent() {
             abi: SERVICE_MARKETPLACE_ABI,
             functionName: 'createRequest',
             args: [BigInt(serviceIds[0]), objective],
-            value: parseEther('0.05'), // Treasury hold - increased to cover jitter
+            value: parseEther('0.05'), // Treasury hold
             gasPrice,
             gas: 500000n,
             type: 'legacy'
@@ -180,7 +176,6 @@ export function useMultiAgent() {
         const nonces = participants.map(() => BigInt(Math.floor(Math.random() * 1000000)))
         const jitteredPrices = thoughts.map((t, i) => {
             const base = Number(t.decision.maxBudget)
-            // Add jitter: ±8% to ensure unique prices
             const jitter = 0.92 + (Math.random() * 0.16)
             return parseEther((base * jitter).toFixed(6))
         })
@@ -244,7 +239,7 @@ export function useMultiAgent() {
             status: i === winnerIdx ? 'won' : 'lost'
         })))
 
-        // 7. Autonomous Settlement for Winner (X402)
+        // 7. Settlement (x402)
         await new Promise(r => setTimeout(r, 1000))
         addLog('action', `🏆 Winner: ${participants[winnerIdx].name}. Processing autonomous payment...`)
         setState('SETTLING')

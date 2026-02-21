@@ -1,12 +1,5 @@
 /**
- * useAgent - Frontend Controller Hook for 1v1 Agent Negotiation
- * 
- * This hook manages the entire lifecycle of a "User vs Agent" negotiation session.
- * It implements the SKALE BITE V2 (Blind Inference & Threshold Encryption) flow
- * and x402-standard settlement.
- * 
- * @module useAgent
- * @returns {AgentState, AgentLog[], Function} State and control methods for the UI.
+ * Lifecycle management for 1v1 Agent Negotiation following SKALE BITE V2.
  */
 import { useState, useCallback, useRef } from 'react'
 import { useWalletClient, usePublicClient, useAccount, useSwitchChain } from 'wagmi'
@@ -70,14 +63,11 @@ export function useAgent() {
     const { data: walletClient } = useWalletClient({ chainId: Number(CHAIN_ID) })
     const publicClient = usePublicClient({ chainId: Number(CHAIN_ID) })
 
-    // 🤖 Bot Identity Logic
-    // If a consistent key is provided in .env, use it to accumulate revenue/reputation.
-    // Otherwise, generate a fresh ephemeral key for testing.
+    // Bot Identity
     const providedKey = process.env.NEXT_PUBLIC_BOT_PRIVATE_KEY as `0x${string}` | undefined
     const providerKey = useRef(providedKey || generatePrivateKey()).current
     const providerAccount = privateKeyToAccount(providerKey)
 
-    // Dedicated client for the Provider Agent to sign and send transactions (Bids, Reveals)
     const providerClient = createWalletClient({
         account: providerAccount,
         chain: skaleBiteSandbox,
@@ -131,8 +121,7 @@ export function useAgent() {
             // We'll wrap first if needed, but standard router handles ETH->Token via specific calls.
             // Using exactInputSingle for simplicity with native placeholder if supported, else WETH pattern.
 
-            // NOTE: For this hackathon demo with placeholders, we simulate the *approval* flow 
-            // but might fallback to simulation if contracts aren't deployed.
+            // router handles ETH->Token via specific calls.
 
             // const approvalHash = await walletClient.writeContract({
             //     address: WETH_ADDRESS,
@@ -178,8 +167,7 @@ export function useAgent() {
     }, [walletClient, publicClient, address, addLog])
 
     /**
-     * consultBrain - Interface with Google Gemini 2.0 Flash
-     * Sends the user's objective to the AI to determine the best blockchain service parameters.
+     * Interface with Gemini for service parameters determination.
      */
     const consultBrain = async (objective: string, currentState: string, metadata?: any): Promise<GeminiDecision> => {
         const res = await fetch('/api/agent/decide', {
@@ -202,7 +190,6 @@ export function useAgent() {
         reset()
         setState('THINKING')
 
-        const treasuryAccount = privateKeyToAccount(treasuryKey)
         const treasuryClient = createWalletClient({
             account: treasuryAccount,
             chain: skaleBiteSandbox,
@@ -494,8 +481,6 @@ export function useAgent() {
             let reqHash = '0xSIMULATED_REQ_' as Hex
             let requestSuccess = false
 
-            // Strict balance check: Price + Gas Buffer (Increased to 0.005 to strictly avoid "Insufficient Funds" lag)
-            // Strict balance check: Price + Gas Buffer (Increased to 0.005 to strictly avoid "Insufficient Funds" lag)
             const requiredFunds = parseEther(decision.maxBudget) + parseEther('0.005')
             let confirmedRequestId: bigint | null = null
             // Check balance before creating request
@@ -552,7 +537,7 @@ export function useAgent() {
             }
 
             if (!requestSuccess) {
-                // Simulation Fallback: Allows the demo to complete even with insufficient funds/errors
+                // Simulation Fallback
                 addLog('info', `⚠️ Transaction failed or cancelled. Using simulation to proceed...`)
                 await new Promise(r => setTimeout(r, 1000))
                 addLog('tx', `✅ [Simulated] Request Created!`, { hash: reqHash + Date.now() })
@@ -569,7 +554,7 @@ export function useAgent() {
             // Hashed Commitment: keccak256(price + nonce)
             const offerHash = keccak256(encodePacked(['uint256', 'uint256'], [offerPrice, nonce]))
 
-            addLog('action', '🔐 [BITE] Encrypting offer... (Simulating BITE V2 Threshold via Hash-Commit for speed)')
+            addLog('action', '🔐 [BITE] Encrypting offer...')
 
             // Phase I: Submit Encrypted Offer (Commit)
             const isSelfCustody = address && address.toLowerCase() === providerAccount.address.toLowerCase()
