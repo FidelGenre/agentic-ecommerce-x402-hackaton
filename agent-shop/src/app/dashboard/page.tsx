@@ -467,7 +467,7 @@ export default function Dashboard() {
 
                         <AnimatePresence>
                             {(isDecrypting || isAuthorizing || isUnlockingData || agentState === 'SETTLING' || battleState === 'SETTLING') && (
-                                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-2xl">
+                                <motion.div key="settlement-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-2xl">
                                     <div className="text-center space-y-8 flex flex-col items-center">
                                         <motion.div
                                             animate={{
@@ -516,7 +516,7 @@ export default function Dashboard() {
             {/* Modals */}
             <AnimatePresence>
                 {isFundingModalOpen && (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+                    <motion.div key="funding-modal" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
                         <div className="bg-[#1a1a1a] border border-white/10 p-8 rounded-3xl w-full max-w-md relative">
                             <button onClick={() => setIsFundingModalOpen(false)} className="absolute top-4 right-4 text-white/30 hover:text-white"><XIcon /></button>
                             <h3 className="text-2xl font-black mb-6 uppercase">Treasury</h3>
@@ -533,7 +533,7 @@ export default function Dashboard() {
                 )}
 
                 {showReceipt && receipt && (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-xl p-4">
+                    <motion.div key="receipt-modal" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-xl p-4">
                         <motion.div
                             initial={{ scale: 0.95, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
@@ -632,7 +632,7 @@ export default function Dashboard() {
                 )}
 
                 {showAddItemModal && (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[250] flex items-center justify-center bg-black/90 backdrop-blur-xl p-4">
+                    <motion.div key="add-item-modal" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[250] flex items-center justify-center bg-black/90 backdrop-blur-xl p-4">
                         <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-[#1a1b26] border border-white/10 p-8 rounded-3xl w-full max-w-md space-y-6 shadow-2xl relative">
                             <button onClick={() => setShowAddItemModal(false)} className="absolute top-4 right-4 p-2 hover:bg-white/5 rounded-xl transition-colors"><XIcon className="w-5 h-5 text-white/30" /></button>
                             <h3 className="text-2xl font-black uppercase tracking-tighter">Create Target Item</h3>
@@ -647,7 +647,7 @@ export default function Dashboard() {
                 )}
 
                 {showAddAgentModal && (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[250] flex items-center justify-center bg-black/90 backdrop-blur-xl p-4">
+                    <motion.div key="add-agent-modal" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[250] flex items-center justify-center bg-black/90 backdrop-blur-xl p-4">
                         <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-[#1a1b26] border border-white/10 p-8 rounded-3xl w-full max-w-md space-y-6 shadow-2xl relative">
                             <button onClick={() => setShowAddAgentModal(false)} className="absolute top-4 right-4 p-2 hover:bg-white/5 rounded-xl transition-colors"><XIcon className="w-5 h-5 text-white/30" /></button>
                             <h3 className="text-2xl font-black uppercase tracking-tighter">Create Agent</h3>
@@ -662,6 +662,79 @@ export default function Dashboard() {
                                     </select>
                                 </div>
                                 <button onClick={handleAddAgentFinal} className="w-full py-5 bg-purple-600 rounded-2xl font-black uppercase">Initialize Agent</button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+
+                {/* Mobile Left Sidebar */}
+                {showMobileLeft && (
+                    <motion.div
+                        key="mobile-left-sidebar"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[150] lg:hidden"
+                    >
+                        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowMobileLeft(false)} />
+                        <motion.div
+                            initial={{ x: '-100%' }}
+                            animate={{ x: 0 }}
+                            exit={{ x: '-100%' }}
+                            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                            className="absolute left-0 top-0 bottom-0 w-[85%] max-w-sm bg-[#0d1117] border-r border-white/10 shadow-2xl overflow-y-auto"
+                        >
+                            <div className="p-4 border-b border-white/5 flex justify-between items-center bg-[#151921]">
+                                <h2 className="text-xs font-black uppercase tracking-widest text-white/60 italic">Deployment Matrix</h2>
+                                <button onClick={() => setShowMobileLeft(false)} className="p-2 hover:bg-white/5 rounded-xl transition-colors"><XIcon className="w-5 h-5 text-white/30" /></button>
+                            </div>
+                            <div className="p-2">
+                                <LeftSidebar
+                                    mode={mode} setMode={setMode} items={items} agents={agentsList}
+                                    treasuryBalance={treasuryBalance} selectedItem={selectedItem}
+                                    setSelectedItem={setSelectedItem} selected1v1AgentId={selected1v1AgentId}
+                                    setSelected1v1AgentId={setSelected1v1AgentId} selectedAgentIds={selectedAgentIds}
+                                    setSelectedAgentIds={setSelectedAgentIds} toggleAgentSelection={id => mode === '1v1' ? setSelected1v1AgentId(id) : setSelectedAgentIds(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id])}
+                                    objective={objective} setObjective={setObjective} onDeploy={() => { setShowMobileLeft(false); handleDeploy(); }}
+                                    onAddItem={() => { setShowMobileLeft(false); setShowAddItemModal(true); }}
+                                    onAddAgent={() => { setShowMobileLeft(false); setShowAddAgentModal(true); }}
+                                    onDeleteItem={handleDeleteItem}
+                                    onDeleteAgent={handleDeleteAgent}
+                                    isDeploying={isNegotiating || isAuthorizing || isUnlockingData}
+                                    isReady={isReadyToNegotiate} isTreasuryReady={!!treasuryAccount} onFund={() => { setShowMobileLeft(false); setIsFundingModalOpen(true); }}
+                                />
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+
+                {/* Mobile Right Sidebar */}
+                {showMobileRight && (
+                    <motion.div
+                        key="mobile-right-sidebar"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[150] xl:hidden"
+                    >
+                        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowMobileRight(false)} />
+                        <motion.div
+                            initial={{ x: '100%' }}
+                            animate={{ x: 0 }}
+                            exit={{ x: '100%' }}
+                            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                            className="absolute right-0 top-0 bottom-0 w-[85%] max-w-sm bg-[#0d1117] border-l border-white/10 shadow-2xl overflow-y-auto"
+                        >
+                            <div className="p-4 border-b border-white/5 flex justify-between items-center bg-[#151921]">
+                                <h2 className="text-xs font-black uppercase tracking-widest text-white/60 italic">Operations Log</h2>
+                                <button onClick={() => setShowMobileRight(false)} className="p-2 hover:bg-white/5 rounded-xl transition-colors"><XIcon className="w-5 h-5 text-white/30" /></button>
+                            </div>
+                            <div className="p-2">
+                                <EventSidebar
+                                    logs={mode === '1v1' ? logs : battleLogs}
+                                    deals={completedDeals}
+                                    onDealClick={(deal) => { setReceipt(deal); setShowReceipt(true); setShowMobileRight(false); }}
+                                />
                             </div>
                         </motion.div>
                     </motion.div>
