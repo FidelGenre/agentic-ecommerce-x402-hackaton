@@ -150,9 +150,10 @@ export function NegotiationView({ agents, targetItem, round, onSettle, isSettled
                                 })
                                 .map((log, index) => (
                                     <motion.div
-                                        key={`${log.id}-${log.agent.persona.id}-${index}`}
-                                        initial={{ opacity: 0, y: 10, scale: 0.98 }}
-                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                        key={log.id}
+                                        layout
+                                        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                                        animate={{ opacity: 1, scale: 1, y: 0 }}
                                         className={cn(
                                             "flex flex-col gap-2 max-w-[90%] md:max-w-[85%]",
                                             log.agent.persona.id === agents[0].persona.id ? "self-start" : "self-end items-end"
@@ -176,7 +177,7 @@ export function NegotiationView({ agents, targetItem, round, onSettle, isSettled
                                                     log.type === 'error' ? "bg-red-500/5 border-red-500/10 text-red-400" :
                                                         "bg-white/5 border-white/5 text-white/40"
                                         )}>
-                                            <TypewriterEffect text={log.content} speed={10} />
+                                            <TypewriterEffect text={log.content} speed={4} />
 
                                             {log.type === 'action' && log.content.includes('FUEL') && (
                                                 <div className="mt-2 md:mt-3 pt-2 md:pt-3 border-t border-white/5 flex items-center gap-2">

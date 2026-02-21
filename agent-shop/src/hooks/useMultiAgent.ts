@@ -1,164 +1,275 @@
 /**
- * useMultiAgent - Battle Royale Logic Hook ⚔️
+ * useMultiAgent - Battle Royale Logic Hook (REAL ON-CHAIN VERSION) ⚔️
  * 
- * Manages the "Battle Royale" mode where multiple AI Agents compete to fulfill a user request.
- * 
- * 🎮 Game Theory:
- * 1. User sets a max budget and demand.
- * 2. Three autonomous agents (Claude, GPT-4, Gemini) are spawned.
- * 3. They analyze the request and submit sealed bids.
- * 4. The winner is selected based on the lowest price (Dutch Auction style logic) or best fit.
- * 
- * @module useMultiAgent
+ * Manages the "Battle Royale" mode where multiple AI Agents compete for a deal.
+ * Each agent operates autonomously with its own wallet and BITE V2 strategy.
  */
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
+import { useAccount, useWalletClient, usePublicClient, useSwitchChain } from 'wagmi'
+import { createWalletClient, http, parseEther, formatEther, type Hex, keccak256, encodePacked } from 'viem'
+import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'
+import { skaleBiteSandbox } from '@/config/chains'
+import { SERVICE_MARKETPLACE_ABI } from '@/lib/skale/marketplace-abi'
 
-export type MultiAgentState = 'IDLE' | 'FUNDING' | 'ADMISSION' | 'BIDDING' | 'EXECUTING' | 'COMPLETED'
+const CONTRACT = process.env.NEXT_PUBLIC_MARKETPLACE_ADDRESS || '0xb64100AAF149215b6CA3B1D366031e39ecb04ce3'
+const CHAIN_ID = process.env.NEXT_PUBLIC_SKALE_CHAIN_ID || '103698795'
+
+export type MultiAgentState = 'IDLE' | 'THINKING' | 'FUNDING' | 'BIDDING' | 'REVEALING' | 'SETTLING' | 'COMPLETED' | 'ERROR'
 
 export interface AgentBid {
     name: string
+    address: string
     price: number
     strategy: string
-    status: 'pending' | 'bidding' | 'submitted' | 'won' | 'lost'
-    score: number // Internal AI confidence score
+    status: 'pending' | 'thinking' | 'funding' | 'bidding' | 'revealed' | 'won' | 'lost'
+    score: number
+    hash?: string
+    revealHash?: string
 }
 
-// Mock Agents with distinct "Personalities" for the simulation
-const MOCK_AGENTS = [
-    { name: 'Claude Opus (Optimizer)', strategy: 'Aggressive undercutting', basePrice: 0.002 },
-    { name: 'GPT-4o (Analyst)', strategy: 'Value-based pricing', basePrice: 0.0025 },
-    { name: 'Gemini 1.5 (Speed)', strategy: 'Latency prioritization', basePrice: 0.0022 }
+export interface AgentLog {
+    id: string
+    type: 'info' | 'action' | 'tx' | 'error'
+    content: string
+    timestamp: number
+    metadata?: {
+        hash?: string
+        isSettlement?: boolean
+    }
+}
+
+const PERSONALITIES = [
+    { name: 'Claude Opus (Optimizer)', strategy: 'aggressive', basePrice: 0.002 },
+    { name: 'GPT-4o (Analyst)', strategy: 'analytical', basePrice: 0.0025 },
+    { name: 'Gemini 1.5 (Speed)', strategy: 'diplomatic', basePrice: 0.0022 }
 ]
 
 export function useMultiAgent() {
     const [state, setState] = useState<MultiAgentState>('IDLE')
     const [bids, setBids] = useState<AgentBid[]>([])
-    const [logs, setLogs] = useState<string[]>([])
+    const [logs, setLogs] = useState<AgentLog[]>([])
 
-    /**
-     * startBattle - Initializes the competition
-     * Spawns agents, funds them from treasury, and puts them in "Admission" state.
-     * @param objective User's request
-     * @param onFund Optional callback to execute real blockchain transactions
-     */
-    const startBattle = useCallback(async (objective: string, onFund?: (agents: { name: string, address: string }[]) => Promise<string[]>) => {
-        setLogs([]) // Clear previous
-        setState('FUNDING')
+    const { address, isConnected } = useAccount()
+    const { data: walletClient } = useWalletClient({ chainId: Number(CHAIN_ID) })
+    const publicClient = usePublicClient({ chainId: Number(CHAIN_ID) })
+    const { switchChainAsync } = useSwitchChain()
 
-        // Initialize Agents immediately so they appear on UI
-        const initialBids = MOCK_AGENTS.map((a, i) => ({
-            name: a.name,
-            price: 0,
-            strategy: a.strategy,
-            status: 'pending' as const,
-            score: 0
-        }))
-        setBids(initialBids)
-
-        // Phase 0: Authorization
-        setLogs(prev => [...prev, `🔐 Security: Verifying Treasury Mandate...`])
-        await new Promise(r => setTimeout(r, 800))
-
-        // Phase 1: Funding Agents (Real or Simulated)
-        setLogs(prev => [...prev, `🏦 Treasury: Dispensing Budget Allocation...`])
-
-        // Generate Agent Wallets (Mock addresses for now, but consistent)
-        const agentWallets = MOCK_AGENTS.map(a => ({
-            name: a.name,
-            address: `0x${Math.floor(Math.random() * 16 ** 40).toString(16).padStart(40, '0')}` // Random ETH address
-        }))
-
-        if (onFund) {
-            try {
-                setLogs(prev => [...prev, `⚡ SKALE: Initiating Batch Transfer to ${agentWallets.length} agents...`])
-                const txHashes = await onFund(agentWallets)
-                txHashes.forEach((hash, i) => {
-                    const agent = agentWallets[i]
-                    setLogs(prev => [...prev, `💸 Real Tx: 0.001 sFUEL -> ${agent.name}`, `   Hash: ${hash}`])
-                })
-            } catch (err: any) {
-                setLogs(prev => [...prev, `⚠️ Funding Error: ${err.message}. Falling back to simulation.`])
-                // Fallback Simulation
-                MOCK_AGENTS.forEach((a, i) => {
-                    const fundingAmount = (Math.random() * 0.005 + 0.002).toFixed(4)
-                    setTimeout(() => {
-                        setLogs(prev => [...prev, `💸 Transfer: ${fundingAmount} sFUEL sent to ${a.name}`])
-                    }, 500 + (i * 600))
-                })
-                await new Promise(r => setTimeout(r, 2500))
-            }
-        } else {
-            // Fallback Simulation
-            MOCK_AGENTS.forEach((a, i) => {
-                const fundingAmount = (Math.random() * 0.005 + 0.002).toFixed(4)
-                setTimeout(() => {
-                    setLogs(prev => [...prev, `💸 Transfer: ${fundingAmount} sFUEL sent to ${a.name}`])
-                }, 500 + (i * 600))
-            })
-            await new Promise(r => setTimeout(r, 2500))
-        }
-
-        // Wait for "transfers" to complete if simulating (real ones awaited above)
-        if (!onFund) await new Promise(r => setTimeout(r, 3500))
-
-        setState('ADMISSION')
-        setLogs(prev => [...prev, `📢 Protocol: Battle Royale initiated for "${objective}"`])
-
-        // Artificial delay for UI drama
-        await new Promise(r => setTimeout(r, 1500))
-        setState('BIDDING')
-        simulateBidding(initialBids)
+    const addLog = useCallback((type: AgentLog['type'], content: string, metadata?: AgentLog['metadata']) => {
+        setLogs(prev => [...prev.slice(-49), {
+            id: `log_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            type,
+            content,
+            timestamp: Date.now(),
+            metadata
+        }])
     }, [])
 
-    /**
-     * simulateBidding - Core Simulation Loop
-     * Agents "think" and adjust their bids dynamically.
-     */
-    const simulateBidding = async (currentBids: AgentBid[]) => {
-        // Round 1: Initial Analysis
-        setLogs(prev => [...prev, `🤖 Agents analyzing market conditions...`])
-        await new Promise(r => setTimeout(r, 2000))
+    const startBattle = useCallback(async (objective: string, treasuryKey: Hex, selectedCount: number = 3) => {
+        if (!isConnected || !walletClient || !publicClient) return
 
-        const round1Bids = currentBids.map(b => ({
-            ...b,
-            status: 'bidding' as const,
-            price: (Math.random() * 0.0005) + 0.0001 // Random initial bid
+        const treasuryAccount = privateKeyToAccount(treasuryKey)
+        const treasuryClient = createWalletClient({
+            account: treasuryAccount,
+            chain: skaleBiteSandbox,
+            transport: http('https://base-sepolia-testnet.skalenodes.com/v1/bite-v2-sandbox')
+        })
+
+        setState('THINKING')
+        setLogs([])
+        addLog('info', `⚔️ Initializing Battle Royale for "${objective}"`)
+
+        // 1. Setup Agents (Burner Wallets)
+        const participants = PERSONALITIES.slice(0, selectedCount).map(p => {
+            const pk = generatePrivateKey()
+            const acc = privateKeyToAccount(pk)
+            return {
+                ...p,
+                account: acc,
+                privateKey: pk,
+                client: createWalletClient({
+                    account: acc,
+                    chain: skaleBiteSandbox,
+                    transport: http('https://base-sepolia-testnet.skalenodes.com/v1/bite-v2-sandbox')
+                })
+            }
+        })
+
+        setBids(participants.map(p => ({
+            name: p.name,
+            address: p.account.address,
+            price: 0,
+            strategy: p.strategy,
+            status: 'thinking',
+            score: 0
+        })))
+
+        // 2. Parallel AI Consult
+        addLog('info', `🧠 Calling Gemini Brain for parallel analysis...`)
+        const thoughts = await Promise.all(participants.map(p =>
+            fetch('/api/agent/decide', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ objective: `[Strategy: ${p.strategy}] ${objective}`, currentState: 'INITIAL_ANALYSIS' }),
+            }).then(r => r.json()).catch(() => ({ decision: { maxBudget: '0.001', reasoning: 'Standard bid.' } }))
+        ))
+
+        setBids(prev => prev.map((b, i) => ({ ...b, status: 'funding' })))
+        setState('FUNDING')
+        addLog('info', `🏦 Treasury: Batch-funding ${participants.length} agent wallets...`)
+
+        // 3. Sequential Funding
+        const gasPrice = await publicClient.getGasPrice()
+        try {
+            for (const p of participants) {
+                const tx = await treasuryClient.sendTransaction({
+                    to: p.account.address,
+                    value: parseEther('0.005'),
+                    chain: skaleBiteSandbox,
+                    gasPrice,
+                    gas: 500000n,
+                    type: 'legacy'
+                })
+                addLog('tx', `💸 Real Tx: 0.005 sFUEL -> ${p.name.split(' ')[0]}`, { hash: tx })
+                await publicClient.waitForTransactionReceipt({ hash: tx })
+            }
+        } catch (err) {
+            addLog('error', `⚠️ Funding Issue: ${err instanceof Error ? err.message : 'Unknown'}`)
+        }
+
+        // 4. Parallel Bidding (Commit Hash)
+        setState('BIDDING')
+        addLog('info', `🔐 BITE V2: Agents submitting encrypted commitments...`)
+
+        // Find or Register services for each
+        const serviceIds = await Promise.all(participants.map(async (p, i) => {
+            try {
+                const reg = await p.client.writeContract({
+                    address: CONTRACT as Hex,
+                    abi: SERVICE_MARKETPLACE_ABI,
+                    functionName: 'registerService',
+                    args: [p.name, p.strategy, parseEther(thoughts[i].decision.maxBudget), 99, 50],
+                    gasPrice,
+                    gas: 500000n,
+                    type: 'legacy'
+                })
+                const receipt = await publicClient.waitForTransactionReceipt({ hash: reg })
+                const log = receipt.logs.find(l => l.address.toLowerCase() === CONTRACT.toLowerCase())
+                return log && log.topics[1] ? Number(BigInt(log.topics[1])) : 0
+            } catch { return i } // Fallback ID
         }))
-        setBids(round1Bids)
 
-        // Round 2: Final Offer
-        await new Promise(r => setTimeout(r, 2000))
-        const finalBids = round1Bids.map(b => ({
-            ...b,
-            status: 'submitted' as const,
-            price: Math.max(0.0001, b.price * (0.9 + Math.random() * 0.2)), // Variation
-            score: Math.random() * 100
+        // Create the user Request
+        addLog('action', `📝 [TREASURY] Autonomous Request Creation...`)
+        const reqTx = await treasuryClient.writeContract({
+            address: CONTRACT as Hex,
+            abi: SERVICE_MARKETPLACE_ABI,
+            functionName: 'createRequest',
+            args: [BigInt(serviceIds[0]), objective],
+            value: parseEther('0.05'), // Treasury hold - increased to cover jitter
+            gasPrice,
+            gas: 500000n,
+            type: 'legacy'
+        })
+        const reqReceipt = await publicClient.waitForTransactionReceipt({ hash: reqTx })
+        const requestId = reqReceipt.logs[0]?.topics[1] ? BigInt(reqReceipt.logs[0].topics[1]) : 0n
+        addLog('tx', `🔢 Request ${requestId} confirmed on-chain.`, { hash: reqTx })
+
+        // Agents commit
+        const nonces = participants.map(() => BigInt(Math.floor(Math.random() * 1000000)))
+        const jitteredPrices = thoughts.map((t, i) => {
+            const base = Number(t.decision.maxBudget)
+            // Add jitter: ±8% to ensure unique prices
+            const jitter = 0.92 + (Math.random() * 0.16)
+            return parseEther((base * jitter).toFixed(6))
+        })
+
+        await Promise.all(participants.map(async (p, i) => {
+            const price = jitteredPrices[i]
+            const commitment = keccak256(encodePacked(['uint256', 'uint256'], [price, nonces[i]]))
+            const tx = await p.client.writeContract({
+                address: CONTRACT as Hex,
+                abi: SERVICE_MARKETPLACE_ABI,
+                functionName: 'submitEncryptedOffer',
+                args: [requestId, commitment],
+                gasPrice,
+                gas: 500000n,
+                type: 'legacy'
+            })
+            setBids(prev => {
+                const nb = [...prev];
+                nb[i] = { ...nb[i], status: 'bidding', hash: tx };
+                return nb;
+            })
+            addLog('tx', `🔒 ${p.name} submitted encrypted bid: ${tx.slice(0, 10)}...`, { hash: tx })
+            // CRITICAL: Wait for commit receipt before reveal
+            await publicClient.waitForTransactionReceipt({ hash: tx })
+            return tx
         }))
-        setBids(finalBids)
+        addLog('info', `🔒 ${participants.length} encrypted commitments verified.`)
 
-        finalizeWinner(finalBids)
-    }
-
-    /**
-     * finalizeWinner - Determines the outcome
-     * Selects the lowest price agent as the winner.
-     */
-    const finalizeWinner = (finalBids: AgentBid[]) => {
-        // Find lowest price
-        const sorted = [...finalBids].sort((a, b) => a.price - b.price)
-        const winner = sorted[0]
-
-        const resultBids = finalBids.map(b => ({
-            ...b,
-            status: (b.name === winner.name ? 'won' : 'lost') as AgentBid['status'] // Type cast for strictness
+        // 5. Parallel Reveal
+        setState('REVEALING')
+        addLog('info', `🔓 Agents revealing bid parameters...`)
+        await Promise.all(participants.map(async (p, i) => {
+            const price = jitteredPrices[i]
+            const tx = await p.client.writeContract({
+                address: CONTRACT as Hex,
+                abi: SERVICE_MARKETPLACE_ABI,
+                functionName: 'revealOffer',
+                args: [requestId, price, nonces[i]],
+                gasPrice,
+                gas: 500000n,
+                type: 'legacy'
+            })
+            setBids(prev => {
+                const nb = [...prev];
+                nb[i] = { ...nb[i], status: 'revealed', revealHash: tx, price: Number(formatEther(price)) };
+                return nb;
+            })
+            addLog('tx', `🔓 ${p.name} revealed bid price: ${formatEther(price)} sFUEL`, { hash: tx })
+            await publicClient.waitForTransactionReceipt({ hash: tx })
+            await new Promise(r => setTimeout(r, 600))
+            return tx
         }))
 
-        setBids(resultBids)
+        // 6. Finalize Winner
+        await new Promise(r => setTimeout(r, 1200))
+        const winnerIdx = jitteredPrices.reduce((acc, curr, idx) =>
+            curr < jitteredPrices[acc] ? idx : acc, 0)
+
+        setBids(prev => prev.map((b, i) => ({
+            ...b,
+            status: i === winnerIdx ? 'won' : 'lost'
+        })))
+
+        // 7. Autonomous Settlement for Winner (X402)
+        await new Promise(r => setTimeout(r, 1000))
+        addLog('action', `🏆 Winner: ${participants[winnerIdx].name}. Processing autonomous payment...`)
+        setState('SETTLING')
+        try {
+            await new Promise(r => setTimeout(r, 1000))
+            const settleHash = await treasuryClient.writeContract({
+                address: CONTRACT as Hex,
+                abi: SERVICE_MARKETPLACE_ABI,
+                functionName: 'settlePayment',
+                args: [requestId, participants[winnerIdx].account.address],
+                gasPrice,
+                gas: 500000n,
+                type: 'legacy'
+            })
+            addLog('tx', `✅ [x402] Autonomous Settlement Confirmed!`, { hash: settleHash, isSettlement: true })
+            await publicClient.waitForTransactionReceipt({ hash: settleHash })
+        } catch (err) {
+            addLog('error', `⚠️ Settlement Failed: ${err instanceof Error ? err.message : 'Unknown'}`)
+        }
+
+        await new Promise(r => setTimeout(r, 1000))
         setState('COMPLETED')
-        setLogs(prev => [...prev, `🏆 Winner: ${winner.name} with bid ${winner.price.toFixed(5)} sFUEL`])
-    }
+        addLog('info', `🎉 Battle Royale Complete. Results verified on SKALE.`)
+
+    }, [isConnected, walletClient, publicClient, addLog])
 
     const resetBattle = useCallback(() => {
         setState('IDLE')

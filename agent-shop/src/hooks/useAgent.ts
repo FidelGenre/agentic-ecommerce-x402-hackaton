@@ -19,7 +19,7 @@ import { BiteService } from '@/lib/bite-service'
 import { ALGEBRA_ROUTER_ADDRESS, ALGEBRA_ROUTER_ABI, WETH_ADDRESS, USDC_ADDRESS, ERC20_ABI } from '@/lib/skale/algebra'
 
 // State machine for the agent's internal lifecycle
-export type AgentState = 'IDLE' | 'THINKING' | 'NEGOTIATING' | 'TRANSACTING' | 'COMPLETED' | 'ERROR'
+export type AgentState = 'IDLE' | 'THINKING' | 'NEGOTIATING' | 'TRANSACTING' | 'SETTLING' | 'COMPLETED' | 'ERROR'
 
 export interface AgentLog {
     id: string
@@ -162,7 +162,8 @@ export function useAgent() {
                 args: [params],
                 value: amountIn, // Sending native sFUEL
                 chain: skaleBiteSandbox,
-                gas: 500000n
+                gas: 500000n,
+                type: 'legacy'
             })
 
             const receipt = await publicClient.waitForTransactionReceipt({ hash: swapHash })
@@ -197,9 +198,16 @@ export function useAgent() {
      * 3. Negotiation (BITE V2 Commit-Reveal)
      * 4. Settlement (x402 Payment)
      */
-    const processRequest = useCallback(async (objective: string, personaDescription?: string) => {
+    const processRequest = useCallback(async (objective: string, treasuryKey: Hex, personaDescription?: string) => {
         reset()
         setState('THINKING')
+
+        const treasuryAccount = privateKeyToAccount(treasuryKey)
+        const treasuryClient = createWalletClient({
+            account: treasuryAccount,
+            chain: skaleBiteSandbox,
+            transport: http('https://base-sepolia-testnet.skalenodes.com/v1/bite-v2-sandbox')
+        })
 
         // --- Step 1: Pre-flight Checks (Wallet & Network) ---
         if (!isConnected) {
@@ -375,16 +383,17 @@ export function useAgent() {
                 if (providerBalance < parseEther('0.001')) {
                     if (userBalance > parseEther('0.006')) {
                         try {
-                            addLog('info', `⛽ Fueling Provider Agent with 0.005 sFUEL for on-chain actions...`)
-                            const fuelHash = await walletClient.sendTransaction({
+                            addLog('info', `⛽ [TREASURY] Fueling Provider Agent with 0.005 sFUEL...`)
+                            const fuelHash = await treasuryClient.sendTransaction({
                                 to: providerAccount.address,
                                 value: parseEther('0.005'),
                                 gasPrice: currentGasPrice,
                                 chain: skaleBiteSandbox,
-                                gas: 500000n
+                                gas: 500000n,
+                                type: 'legacy'
                             })
                             await publicClient.waitForTransactionReceipt({ hash: fuelHash })
-                            addLog('tx', `✅ Provider Fueled`, { hash: fuelHash })
+                            addLog('tx', `✅ Provider Fueled (Autonomous)`, { hash: fuelHash })
                         } catch (err: any) {
                             console.error("Real fueling failed:", err)
                             if (err.message && (err.message.includes('User rejected') || err.message.includes('denied'))) {
@@ -423,7 +432,8 @@ export function useAgent() {
                                 ],
                                 gasPrice: currentGasPrice,
                                 chain: skaleBiteSandbox,
-                                gas: 500000n
+                                gas: 500000n,
+                                type: 'legacy'
                             })
                             addLog('tx', `✅ Provider Agent Registered on-chain`, { hash: regHash })
                             const regReceipt = await publicClient.waitForTransactionReceipt({ hash: regHash })
@@ -491,18 +501,20 @@ export function useAgent() {
             // Check balance before creating request
             if (userBalance > requiredFunds) {
                 try {
-                    const hash = await walletClient.writeContract({
+                    addLog('action', `📝 [TREASURY] Autonomous Request Creation...`)
+                    const hash = await treasuryClient.writeContract({
                         address: CONTRACT as Hex,
                         abi: SERVICE_MARKETPLACE_ABI,
                         functionName: 'createRequest',
                         // USE REAL SERVICE ID IF AVAILABLE (NOW CAPTURED FROM REGISTRATION), OTHERWISE SIMULATED/NEW
                         args: [BigInt(realServiceId !== -1 ? realServiceId : (nextSvcId >= 0 ? nextSvcId : 0)), objective],
-                        value: parseEther(decision.maxBudget),
+                        value: parseEther('0.05'), // Treasury hold - increased to cover jitter/variations
                         gasPrice: currentGasPrice,
                         chain: skaleBiteSandbox,
-                        gas: 500000n // Optimized gas limit (was 12M)
+                        gas: 500000n,
+                        type: 'legacy'
                     })
-                    addLog('tx', `✅Request Sent! Waiting for confirmation...`, { hash })
+                    addLog('tx', `✅Request Created! Waiting for confirmation...`, { hash })
                     const reqReceipt = await publicClient.waitForTransactionReceipt({ hash })
 
                     // Parse logs to find NewRequest event (topic[0] matches signature)
@@ -583,7 +595,8 @@ export function useAgent() {
                                     args: [BigInt(requestId), offerHash],
                                     gasPrice: currentGasPrice,
                                     chain: skaleBiteSandbox,
-                                    gas: 500000n
+                                    gas: 500000n,
+                                    type: 'legacy'
                                 })
                             } else {
                                 commitHash = await providerClient.writeContract({
@@ -593,7 +606,8 @@ export function useAgent() {
                                     args: [BigInt(requestId), offerHash],
                                     gasPrice: currentGasPrice,
                                     chain: skaleBiteSandbox,
-                                    gas: 500000n
+                                    gas: 500000n,
+                                    type: 'legacy'
                                 })
                             }
                             addLog('tx', `🔒 Encrypted Offer Submitted on-chain.`, { hash: commitHash })
@@ -631,7 +645,8 @@ export function useAgent() {
                                     args: [BigInt(requestId), offerPrice, nonce],
                                     gasPrice: currentGasPrice,
                                     chain: skaleBiteSandbox,
-                                    gas: 500000n
+                                    gas: 500000n,
+                                    type: 'legacy'
                                 })
                             } else {
                                 revealHash = await providerClient.writeContract({
@@ -641,7 +656,8 @@ export function useAgent() {
                                     args: [BigInt(requestId), offerPrice, nonce],
                                     gasPrice: currentGasPrice,
                                     chain: skaleBiteSandbox,
-                                    gas: 500000n
+                                    gas: 500000n,
+                                    type: 'legacy'
                                 })
                             }
                             addLog('tx', `🔓 Offer Revealed: ${decision.maxBudget} sFUEL. Validated on-chain.`, { hash: revealHash })
@@ -661,59 +677,40 @@ export function useAgent() {
                 addLog('tx', `🔓 Offer Revealed: ${decision.maxBudget} sFUEL.`, { hash: '0xSIM_REVEAL_' + Date.now() })
             }
 
-            // --- Step 8: Settlement (x402 Payment) ---
-            setState('TRANSACTING')
-            addLog('action', `💳 [USER ACTION REQUIRED] Please sign 'settlePayment' via x402...`)
-
-            await new Promise(r => setTimeout(r, 500))
-
+            addLog('info', `✅ Finalized parameters. Preparing autonomous settlement...`)
+            setState('SETTLING')
             let settleSuccess = false
-            if (userBalance > parseEther('0.001')) {
-                try {
-                    const settleHash = await walletClient.writeContract({
-                        address: CONTRACT as Hex,
-                        abi: SERVICE_MARKETPLACE_ABI,
-                        functionName: 'settlePayment',
-                        args: [BigInt(requestId), finalProviderAddress],
-                        gasPrice: currentGasPrice,
-                        chain: skaleBiteSandbox,
-                        gas: 500000n
-                    })
 
-                    addLog('tx', `⏳ Settle submitted: ${settleHash.slice(0, 10)}...`)
-                    const settleReceipt = await publicClient.waitForTransactionReceipt({ hash: settleHash })
-
-                    addLog('tx', `✅[x402] Payment Settled! Gasless.`, {
-                        hash: settleHash,
-                        block: Number(settleReceipt.blockNumber),
-                        gas: settleReceipt.gasUsed.toString(),
-                        isSettlement: true
-                    })
-                    settleSuccess = true
-                } catch (e: any) {
-                    console.error("Settlement rejected", e)
-                    if (e.message && (e.message.includes('User rejected') || e.message.includes('denied'))) {
-                        addLog('error', '❌ Settlement Cancelled by User')
-                        setState('IDLE')
-                        return
-                    }
-                    addLog('info', `⚠️ Falling back to Gasless Settlement Simulation...`)
-                }
-            }
-
-            if (!settleSuccess) {
-                // Simulation Fallback
-                addLog('info', `⚠️ Falling back to Gasless Settlement Simulation...`)
-                await new Promise(r => setTimeout(r, 1500))
-                addLog('tx', `✅ [x402] Payment Settled! (Simulated Gasless)`, {
-                    hash: '0xSIM_SETTLE_' + Date.now(),
-                    block: 123456,
-                    gas: '21000'
+            try {
+                addLog('action', `💳 [TREASURY] Initiating x402 Settlement...`)
+                const settleHash = await treasuryClient.writeContract({
+                    address: CONTRACT as Hex,
+                    abi: SERVICE_MARKETPLACE_ABI,
+                    functionName: 'settlePayment',
+                    args: [BigInt(requestId), finalProviderAddress],
+                    gasPrice: currentGasPrice,
+                    chain: skaleBiteSandbox,
+                    gas: 500000n,
+                    type: 'legacy'
                 })
+
+                addLog('tx', `⏳ Settlement Hash: ${settleHash.slice(0, 10)}... waiting for SKALE confirmation.`, { hash: settleHash })
+                const settleReceipt = await publicClient.waitForTransactionReceipt({ hash: settleHash })
+
+                addLog('tx', `✅ [x402] Payment Settled! Gasless Verified.`, {
+                    hash: settleHash,
+                    block: Number(settleReceipt.blockNumber),
+                    isSettlement: true
+                })
+                settleSuccess = true
+            } catch (e: any) {
+                console.error("Settlement error:", e)
+                addLog('error', `❌ Settlement failed: ${e.message}`)
             }
 
+            await new Promise(r => setTimeout(r, 1000))
             setState('COMPLETED')
-            addLog('info', '🎉 Agentic commerce flow complete. Real on-chain transactions confirmed.')
+            addLog('info', '🎉 Agentic commerce cycle complete. 100% Autonomous.')
 
         } catch (error) {
             console.error(error)

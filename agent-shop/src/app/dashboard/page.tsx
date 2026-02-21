@@ -96,7 +96,7 @@ export default function Dashboard() {
     const [selectedAgentIds, setSelectedAgentIds] = useState<string[]>([])
 
     const { state: battleState, bids: battleBids, logs: battleLogs, startBattle, resetBattle } = useMultiAgent()
-    const isBattleActive = battleState === 'BIDDING' || battleState === 'ADMISSION' || battleState === 'EXECUTING' || battleState === 'FUNDING'
+    const isBattleActive = battleState !== 'IDLE' && battleState !== 'COMPLETED' && battleState !== 'ERROR'
 
     const agents = battleBids.map((bid, idx) => ({
         id: `agent_${idx}`,
@@ -108,7 +108,8 @@ export default function Dashboard() {
             icon: Bot,
             style: 'aggressive' as const
         },
-        status: (bid.status === 'won' ? 'winner' : bid.status === 'lost' ? 'dropped' : bid.status) as any,
+        status: (bid.status === 'won' ? 'winner' : bid.status === 'lost' ? 'dropped' :
+            bid.status === 'revealed' ? 'bidding' : bid.status) as any,
         currentBid: bid.price,
         logs: [] as any[]
     }))
@@ -209,25 +210,28 @@ export default function Dashboard() {
                 settlementHash: realHash || `0x${Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('')}`,
                 status: 'settled'
             },
-            logs: mode === '1v1' ? logs : agents.flatMap(a => a.logs).sort((a, b) => a.timestamp - b.timestamp)
+            logs: mode === '1v1' ? logs : battleLogs
         }
         setReceipt(newReceipt)
         setCompletedDeals(prev => [newReceipt, ...prev])
         setShowReceipt(true)
-    }, [selectedItem, objective, winner, logs, mode, agents])
+    }, [selectedItem, objective, winner, logs, battleLogs, mode, agents])
 
     useEffect(() => {
-        if (mode === '1v1' && agentState === 'COMPLETED' && !receipt) {
-            const settleLog = logs.find((l: any) => l.metadata?.isSettlement)
-            if (settleLog?.metadata?.hash) {
-                const timer = setTimeout(() => handleGenerateReceipt(settleLog.metadata.hash, true), 2000)
-                return () => clearTimeout(timer)
-            } else {
-                const timer = setTimeout(() => handleGenerateReceipt(undefined, true), 2000)
-                return () => clearTimeout(timer)
+        const currentLogs = mode === '1v1' ? logs : battleLogs
+        if (agentState === 'COMPLETED' || battleState === 'COMPLETED') {
+            if (!receipt) {
+                const settleLog = currentLogs.find((l: any) => l.metadata?.isSettlement)
+                if (settleLog?.metadata?.hash) {
+                    const timer = setTimeout(() => handleGenerateReceipt(settleLog.metadata.hash), 300)
+                    return () => clearTimeout(timer)
+                } else {
+                    const timer = setTimeout(() => handleGenerateReceipt(undefined), 300)
+                    return () => clearTimeout(timer)
+                }
             }
         }
-    }, [agentState, mode, logs, receipt, handleGenerateReceipt])
+    }, [agentState, battleState, mode, logs, battleLogs, receipt, handleGenerateReceipt])
 
     const handleSettle = useCallback(async () => {
         if (isDecrypting || receipt || !winner || !treasuryAccount) return
@@ -253,12 +257,15 @@ export default function Dashboard() {
         }
     }, [isDecrypting, receipt, winner, treasuryAccount, publicClient, handleGenerateReceipt])
 
+    // Unified settlement trigger
     useEffect(() => {
-        if (mode === 'multi' && winner && !isAuthorizing && !receipt && !isUnlockingData && !isDecrypting) {
-            const timer = setTimeout(() => handleSettle(), 3000)
-            return () => clearTimeout(timer)
+        // Only trigger manual settlement for 1v1 if it's NOT handled internally by hook
+        // Currently useAgent IS autonomous, so this is mostly a fallback.
+        if (mode === '1v1' && winner && !receipt && !isAuthorizing && !isDecrypting) {
+            // 1v1 auto-settle is disabled here to let useAgent handle it.
+            // If we want page-level settlement, we'd uncomment this.
         }
-    }, [winner, mode, receipt, isAuthorizing, isUnlockingData, isDecrypting, handleSettle])
+    }, [winner, mode, receipt, isAuthorizing, isDecrypting, handleSettle])
 
     const handleFundAgents = async (agents: { name: string, address: string }[]) => {
         if (!treasuryAccount) return []
@@ -353,23 +360,27 @@ export default function Dashboard() {
     }
 
     const handleDeploy = async () => {
+        const treasuryKey = localStorage.getItem('agentTreasuryKey') as Hex | null
+        if (!treasuryKey) return alert("Treasury not initialized!")
+
+        // Reset receipt state for fresh run
+        setReceipt(null)
+        setShowReceipt(false)
+
         if (mode === '1v1') {
             if (agentState === 'COMPLETED' || agentState === 'ERROR') resetAgent()
             const persona = agentsList.find(p => p.id === selected1v1AgentId) || AGENT_PERSONAS.find(p => p.id === selected1v1AgentId)
             const personaDesc = persona ? `${persona.name} (${persona.role}) - ${persona.description}` : undefined
-            processRequest(objective.trim() || 'Negotiate best deal', personaDesc)
+            processRequest(objective.trim() || 'Negotiate best deal', treasuryKey, personaDesc)
         } else {
             if (!selectedItem || selectedAgentIds.length < 2) return
-            if (Number(treasuryBalance) < Number(selectedItem.basePrice) * 1.05) return alert("Insufficient Treasury Funds!")
-            setIsAuthorizing(true)
-            setTimeout(() => {
-                setIsAuthorizing(false)
-                setIsUnlockingData(true)
-                setTimeout(() => {
-                    setIsUnlockingData(false)
-                    startBattle(selectedItem?.name || "Service", handleFundAgents)
-                }, 1500)
-            }, 1000)
+            if (Number(treasuryBalance) < 0.01) return alert("Insufficient Treasury Funds (Min 0.01 sFUEL needed for Battle)!")
+
+            // Reset multi hooks
+            if (battleState === 'COMPLETED' || battleState === 'ERROR') resetBattle()
+
+            // Start real multi-agent battle on-chain autonomously
+            startBattle(selectedItem.name, treasuryKey, selectedAgentIds.length)
         }
     }
 
@@ -442,17 +453,44 @@ export default function Dashboard() {
                                 <AgentTerminal logs={logs} status={agentState} targetItem={selectedItem} />
                             ) : (
                                 <div className="flex-1 p-6 overflow-y-auto custom-scrollbar">
-                                    <NegotiationView agents={agents} targetItem={selectedItem || items[0]} round={1} onSettle={handleSettle} isSettled={!!winner} logs={battleLogs.map((l, i) => ({ id: `${i}`, content: l, type: 'info' } as any))} />
+                                    <NegotiationView
+                                        agents={agents}
+                                        targetItem={selectedItem || items[0]}
+                                        round={1}
+                                        onSettle={handleSettle}
+                                        isSettled={!!winner}
+                                        logs={battleLogs}
+                                    />
                                 </div>
                             )}
                         </div>
 
                         <AnimatePresence>
-                            {(isAuthorizing || isUnlockingData || isDecrypting) && (
-                                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-xl">
-                                    <div className="text-center space-y-4">
-                                        <Loader2 className="w-12 h-12 text-indigo-400 animate-spin mx-auto" />
-                                        <h3 className="text-xl font-black uppercase tracking-widest">{isDecrypting ? "Settling" : isAuthorizing ? "Authorizing" : "Unlocking"}</h3>
+                            {(isDecrypting || isAuthorizing || isUnlockingData || agentState === 'SETTLING' || battleState === 'SETTLING') && (
+                                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-2xl">
+                                    <div className="text-center space-y-8 flex flex-col items-center">
+                                        <motion.div
+                                            animate={{
+                                                scale: [1, 1.1, 1],
+                                                boxShadow: [
+                                                    "0 0 20px rgba(34, 211, 238, 0.2)",
+                                                    "0 0 40px rgba(34, 211, 238, 0.4)",
+                                                    "0 0 20px rgba(34, 211, 238, 0.2)"
+                                                ]
+                                            }}
+                                            transition={{ repeat: Infinity, duration: 2 }}
+                                            className="w-32 h-16 md:w-40 md:h-20 rounded-full bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center relative overflow-hidden"
+                                        >
+                                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-400/10 to-transparent animate-shimmer" />
+                                            <Zap className="w-8 h-8 md:w-10 md:h-10 text-cyan-400 animate-pulse" />
+                                        </motion.div>
+
+                                        <div className="space-y-4">
+                                            <h3 className="text-2xl md:text-3xl font-black uppercase tracking-[0.3em] text-white">X402 SETTLEMENT</h3>
+                                            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em]">
+                                                PROTOCOL STANDARD X402 VERIFIED
+                                            </div>
+                                        </div>
                                     </div>
                                 </motion.div>
                             )}
@@ -460,7 +498,12 @@ export default function Dashboard() {
                     </div>
 
                     <div className="hidden xl:block w-96 h-full flex-none border-l border-white/5">
-                        <EventSidebar logs={mode === '1v1' ? logs : battleLogs.map((l, i) => ({ timestamp: Date.now() + i, type: 'info', content: l } as any))} deals={completedDeals} onClose={() => setShowReceipt(false)} onDealClick={(deal) => { setReceipt(deal); setShowReceipt(true); }} />
+                        <EventSidebar
+                            logs={mode === '1v1' ? logs : battleLogs}
+                            deals={completedDeals}
+                            onClose={() => setShowReceipt(false)}
+                            onDealClick={(deal) => { setReceipt(deal); setShowReceipt(true); }}
+                        />
                     </div>
                 </div>
 
@@ -491,7 +534,20 @@ export default function Dashboard() {
 
                 {showReceipt && receipt && (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-xl p-4">
-                        <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-[#151921] rounded-3xl border border-white/10 w-full max-w-2xl overflow-hidden relative shadow-2xl">
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            className="bg-[#151921] rounded-3xl border border-white/10 w-full max-w-2xl overflow-hidden relative shadow-2xl"
+                            style={{
+                                boxShadow: '0 0 120px rgba(34, 211, 238, 0.15), inset 0 0 40px rgba(52, 211, 153, 0.05)'
+                            }}
+                        >
+                            <div className="absolute inset-0 pointer-events-none">
+                                <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 via-transparent to-green-500/10 opacity-50" />
+                                <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-cyan-400/40 to-transparent" />
+                                <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-green-400/40 to-transparent" />
+                                <div className="absolute inset-0 border border-cyan-500/20 rounded-3xl animate-pulse" />
+                            </div>
                             <div className="p-8 border-b border-white/5 flex justify-between items-center relative z-10">
                                 <div className="flex items-center gap-3">
                                     <CheckCircle2 className="w-6 h-6 text-green-400" />
@@ -503,20 +559,48 @@ export default function Dashboard() {
                                 <button onClick={() => setShowReceipt(false)} className="p-2 hover:bg-white/10 rounded-xl transition-colors"><XIcon className="w-5 h-5 text-white/30" /></button>
                             </div>
                             <div className="p-8 space-y-6">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
-                                        <label className="text-[9px] text-white/40 uppercase block mb-1">Final Price</label>
-                                        <p className="text-xl md:text-2xl font-black text-green-400 font-mono break-all">{receipt.cartMandate?.finalPrice} sFUEL</p>
+                                <div className="p-6 bg-white/[0.02] rounded-2xl border border-white/5 flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20">
+                                            <ShieldCheck className="w-6 h-6 text-indigo-400" />
+                                        </div>
+                                        <div>
+                                            <p className="text-[9px] text-white/20 uppercase font-black tracking-widest">Protocol</p>
+                                            <p className="text-lg font-black text-white italic tracking-tight">x402 Mandate</p>
+                                        </div>
                                     </div>
-                                    <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
-                                        <label className="text-[9px] text-white/40 uppercase block mb-1">Target</label>
-                                        <p className="text-lg font-bold text-white truncate">{receipt.intentMandate.target}</p>
+                                    <div className="px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-500/30 text-[8px] font-black text-indigo-400 uppercase tracking-widest">
+                                        Gasless Verified
                                     </div>
-                                    <div className="col-span-2 p-4 bg-black/40 border border-white/5 rounded-2xl">
-                                        <label className="text-[9px] text-white/20 uppercase block mb-1">Hash</label>
-                                        <a href={`https://base-sepolia-testnet-explorer.skalenodes.com:10032/tx/${receipt.payment?.settlementHash}`} target="_blank" className="text-[10px] font-mono text-indigo-400 flex items-center gap-1 hover:underline truncate">
-                                            {receipt.payment?.settlementHash} <ExternalLink className="w-3 h-3" />
-                                        </a>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="p-6 bg-green-500/[0.03] rounded-2xl border border-green-500/10 shadow-[inset_0_0_20px_rgba(34,197,94,0.05)]">
+                                        <label className="text-[9px] text-green-400/60 uppercase font-black tracking-widest block mb-2">Final Settlement</label>
+                                        <div className="flex flex-col">
+                                            <span className="text-2xl md:text-3xl font-black text-green-400 font-mono break-all leading-tight">
+                                                {receipt.cartMandate?.finalPrice}
+                                            </span>
+                                            <span className="text-sm font-black text-green-400/60 uppercase">sFUEL</span>
+                                        </div>
+                                    </div>
+                                    <div className="p-6 bg-white/[0.02] rounded-2xl border border-white/5">
+                                        <label className="text-[9px] text-white/40 uppercase font-black tracking-widest block mb-2">Acquired Target</label>
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20">
+                                                <Box className="w-4 h-4 text-indigo-400" />
+                                            </div>
+                                            <p className="text-lg font-bold text-white truncate">{receipt.intentMandate.target}</p>
+                                        </div>
+                                    </div>
+                                    <div className="col-span-1 md:col-span-2 p-6 bg-black/40 border border-white/5 rounded-2xl">
+                                        <label className="text-[9px] text-white/20 uppercase font-black tracking-widest block mb-3">Settlement Hash</label>
+                                        <div className="flex items-center gap-3">
+                                            <Globe className="w-4 h-4 text-indigo-500/60" />
+                                            <a href={`https://base-sepolia-testnet-explorer.skalenodes.com:10032/tx/${receipt.payment?.settlementHash}`} target="_blank" className="text-[11px] font-mono text-indigo-400/80 hover:text-indigo-400 break-all transition-colors flex-1">
+                                                {receipt.payment?.settlementHash}
+                                            </a>
+                                            <ExternalLink className="w-3 h-3 text-white/20" />
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-3 gap-3 pt-2">
