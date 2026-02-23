@@ -190,6 +190,7 @@ export function useAgent() {
         reset()
         setState('THINKING')
 
+        const treasuryAccount = privateKeyToAccount(treasuryKey)
         const treasuryClient = createWalletClient({
             account: treasuryAccount,
             chain: skaleBiteSandbox,
